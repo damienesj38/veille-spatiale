@@ -37,6 +37,22 @@ h1 em{font-style:italic;color:var(--glow);font-weight:400}
 .solar{font-size:12.5px;color:var(--dim);padding:6px 0;align-self:center;margin-left:auto}
 .solar b{color:var(--text);font-family:var(--serif);font-size:15px}
 
+/* top 3 */
+#top{margin:22px 0 6px;border:1px solid #2c3a4c;border-radius:4px;background:linear-gradient(180deg,#161f2b,#131a24);padding:16px 18px}
+#top .th{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
+#top .th h2{font-family:var(--serif);font-size:17px;font-weight:600;margin:0}
+#top .th span{font-size:12px;color:var(--faint)}
+#top .th button{margin-left:auto;font-size:12px;color:var(--faint)}
+#top .th button:hover{color:var(--glow)}
+.pick{display:grid;grid-template-columns:22px 1fr;gap:0 12px;padding:11px 0;border-top:1px solid #26313f;cursor:pointer}
+.pick:first-of-type{border-top:none;padding-top:0}
+.pick .r{font-family:var(--serif);font-size:20px;color:var(--glow);line-height:1.2}
+.pick .t{font-family:var(--serif);font-size:17.5px;font-weight:600;line-height:1.3;margin:0 0 3px}
+.pick:hover .t{color:var(--glow)}
+.pick .w{font-size:13.5px;color:var(--dim);margin:0}
+.pick .m{font-size:12px;color:var(--faint);margin-top:3px}
+.item.spot{background:rgba(127,212,255,.06);box-shadow:inset 2px 0 0 var(--glow)}
+
 /* liste */
 .item{border-bottom:1px solid var(--line);padding:18px 0}
 .item .head{display:grid;grid-template-columns:3px 1fr;gap:0 15px;cursor:pointer}
@@ -62,6 +78,10 @@ h1 em{font-style:italic;color:var(--glow);font-weight:400}
 .slide .n{font-size:11px;color:var(--faint);margin-bottom:3px}
 .slide .t{font-family:var(--serif);font-size:16px;font-weight:600;margin-bottom:4px}
 .slide .x{font-size:13.5px;color:var(--dim)}
+.check{border:1px solid #5c4a1e;background:#1d1810;border-radius:3px;padding:11px 13px;font-size:13px;color:var(--dim)}
+.check b{color:var(--amber);display:block;margin-bottom:5px;font-weight:500}
+.check ul{margin:0;padding-left:18px}
+.check li{margin-bottom:3px}
 .cap{border:1px dashed var(--line);border-radius:3px;padding:11px 13px;font-size:13.5px;color:var(--dim);white-space:pre-wrap}
 
 .empty{padding:60px 0;color:var(--faint);font-family:var(--serif);font-style:italic;font-size:17px}
@@ -106,6 +126,7 @@ input[type=checkbox]{accent-color:#4c8fb5;width:13px;height:13px}
 </header>
 
 <div class="wrap">
+  <section id="top" hidden></section>
   <div id="list"><p class="empty">Chargement…</p></div>
 </div>
 
@@ -159,7 +180,18 @@ const FEEDS=[
   {id:"ut",   name:"Universe Today",       url:"https://www.universetoday.com/feed/", on:true},
   {id:"snt",  name:"Sky & Telescope",      url:"https://skyandtelescope.org/astronomy-news/feed/", on:true},
   {id:"futura",name:"Futura espace",       url:"https://www.futura-sciences.com/rss/espace/actualites.xml", on:true},
-  {id:"ciel", name:"Ciel & Espace",        url:"https://www.cieletespace.fr/rss", on:true}
+  {id:"ciel", name:"Ciel & Espace",        url:"https://www.cieletespace.fr/rss", on:false},
+
+  // comptes Bluesky : souvent les premiers à publier
+  {id:"bsBerger", name:"Bluesky · Eric Berger",       url:"https://bsky.app/profile/sciguyspace.bsky.social/rss", on:true},
+  {id:"bsMcD",    name:"Bluesky · Jonathan McDowell", url:"https://bsky.app/profile/planet4589.bsky.social/rss", on:true},
+  {id:"bsTech",   name:"Bluesky · Techniques Spatiales", url:"https://bsky.app/profile/techspatiales.bsky.social/rss", on:true},
+  {id:"bsXplo",   name:"Bluesky · Xplora",            url:"https://bsky.app/profile/xploraspace.bsky.social/rss", on:true},
+
+  // alertes scientifiques à chaud
+  {id:"atel", name:"Astronomer's Telegram", url:"http://www.astronomerstelegram.org/?rss", on:true},
+  {id:"spol", name:"SpacePolicyOnline",     url:"https://spacepolicyonline.com/feed/", on:true},
+  {id:"eskt", name:"EarthSky",              url:"https://earthsky.org/feed/", on:true}
 ];
 
 const savedOn = store.get("v24.feeds", {});
@@ -255,6 +287,10 @@ function parseFeed(xml, feed){
     let t = Date.parse(txt(n,"pubDate") || txt(n,"published") || txt(n,"updated") || txt(n,"date"));
     if(isNaN(t)) t = 0;
     const body = txt(n,"encoded") || txt(n,"content") || txt(n,"description") || txt(n,"summary");
+    let author = txt(n,"creator") || txt(n,"author");
+    const au = kids(n,"author")[0];
+    if(au && !author) author = txt(au,"name");
+    author = strip(author).slice(0,80);
 
     let img = "";
     for(const e of kids(n,"enclosure")){
@@ -273,7 +309,8 @@ function parseFeed(xml, feed){
     return {
       key: (link || "").replace(/[?#].*$/,""),
       title: strip(txt(n,"title")) || "(sans titre)",
-      link, t, src: feed.name,
+      link, t, src: feed.name, author,
+      social: /bsky\.app/i.test(feed.url),
       excerpt: strip(body).slice(0, 500),
       img: /^https?:/.test(img) ? img : "",
       fr: null, slides: null, working: false
@@ -322,6 +359,7 @@ async function load(){
     items.length + " articles sur 24 h" + (ko ? " · " + ko + " source(s) muette(s)" : ""));
   render();
   if(items.some(x => !x.fr) && hasAI()) translateAll();
+  else pickTop(false);
 }
 
 function setStat(kind, s){
@@ -345,8 +383,84 @@ function cacheSave(x){
   store.set("v24.cache", c);
 }
 
+/* ---------- top 3 ---------- */
+let top3 = null;      // {picks:[{key, why}], at}
+let top3Busy = false;
+
+async function pickTop(force){
+  if(top3Busy || !hasAI() || items.length < 4) return;
+  const pool = items.slice(0, 45);
+  const sig = pool.slice(0, 12).map(x => x.key).join("|");
+  if(!force){
+    const c = store.get("v24.top", null);
+    if(c && c.sig === sig){ top3 = c; renderTop(); return; }
+  }
+
+  top3Busy = true; renderTop();
+  try{
+    const payload = pool.map((x, i) => ({
+      i,
+      titre: x.fr || x.title,
+      source: x.src,
+      extrait: x.excerpt.slice(0, 200)
+    }));
+    const out = await ask(
+      STYLE + " Tu réponds uniquement par du JSON, sans texte autour.",
+      "Voici les actualités spatiales des dernières 24 heures. Choisis les 3 plus intéressantes " +
+      "pour un large public curieux, pas pour des spécialistes.\n\n" +
+      "Critères, dans cet ordre : une information nouvelle et concrète plutôt qu'une annonce vague, " +
+      "quelque chose qui se raconte et se comprend sans bagage technique, " +
+      "un potentiel visuel ou une part de merveilleux. " +
+      "Écarte les communiqués institutionnels sans substance, les lancements de routine " +
+      "et les sujets purement industriels ou budgétaires, sauf s'ils marquent une vraie rupture.\n\n" +
+      "Pour chacune, explique en une phrase de 15 à 25 mots pourquoi elle mérite l'attention.\n" +
+      "Classe de la plus forte à la moins forte.\n" +
+      "Format JSON : [{\"i\": nombre, \"pourquoi\": \"\"}]\n\n" +
+      JSON.stringify(payload),
+      900
+    );
+    const picks = parseJson(out).slice(0, 3)
+      .map(o => ({key: pool[o.i] && pool[o.i].key, why: o.pourquoi}))
+      .filter(p => p.key);
+    top3 = {sig, picks, at: Date.now()};
+    store.set("v24.top", top3);
+  }catch(e){
+    toast("Classement impossible : " + e.message);
+  }finally{
+    top3Busy = false; renderTop();
+  }
+}
+
+function renderTop(){
+  const box = document.getElementById("top");
+  if(top3Busy && !top3){
+    box.hidden = false;
+    box.innerHTML = '<div class="th"><h2>Les 3 infos à retenir</h2><span>lecture en cours…</span></div>';
+    return;
+  }
+  if(!top3 || !top3.picks.length){ box.hidden = true; return; }
+
+  const rows = top3.picks.map((p, i) => {
+    const x = items.find(it => it.key === p.key);
+    if(!x) return "";
+    return '<div class="pick" data-go="' + esc(x.key) + '">' +
+      '<div class="r">' + (i + 1) + '</div>' +
+      '<div><p class="t">' + esc(x.fr || x.title) + '</p>' +
+      '<p class="w">' + esc(p.why) + '</p>' +
+      '<div class="m">' + esc(x.src) + ' · ' + ago(x.t) + '</div></div>' +
+    '</div>';
+  }).join("");
+
+  if(!rows.trim()){ box.hidden = true; return; }
+  box.hidden = false;
+  box.innerHTML = '<div class="th"><h2>Les 3 infos à retenir</h2>' +
+    '<span>choisies parmi ' + items.length + ' articles</span>' +
+    '<button id="reTop">' + (top3Busy ? "en cours…" : "refaire le choix") + '</button></div>' + rows;
+}
+
 /* ---------- affichage ---------- */
 function render(){
+  renderTop();
   const box = document.getElementById("list");
   if(!items.length){
     box.innerHTML = '<p class="empty">' + (busy ? "Chargement…" :
@@ -357,7 +471,8 @@ function render(){
     const h = (Date.now() - x.t) / 3600e3;
     const cls = h < 3 ? "h3" : h < 12 ? "h12" : "";
     const open = openId === x.key;
-    return '<article class="item" data-k="' + esc(x.key) + '">' +
+    const spot = top3 && top3.picks.some(p => p.key === x.key);
+    return '<article class="item' + (spot ? " spot" : "") + '" data-k="' + esc(x.key) + '">' +
       '<div class="head">' +
         '<div class="age ' + cls + '"></div>' +
         '<div>' +
@@ -377,6 +492,7 @@ function detailHtml(x){
   s += '<div class="lbl">Source</div>';
   s += '<p><a href="' + esc(x.link) + '" target="_blank" rel="noopener">' + esc(x.src) + ' · ouvrir l\'article original</a><br>' +
        '<span style="color:var(--faint);font-size:12.5px">' + esc(x.link) + '</span></p>';
+  if(x.author) s += '<div class="lbl">Signé</div><p>' + esc(x.author) + '</p>';
   s += '<div class="lbl">Titre d\'origine</div><p>' + esc(x.title) + '</p>';
   if(x.excerpt) s += '<div class="lbl">Extrait du flux</div><p>' + esc(x.excerpt) + '</p>';
   s += '<div class="row">' +
@@ -394,6 +510,11 @@ function detailHtml(x){
     });
     if(x.slides.legende) s += '<div class="cap"><b>Légende</b>\n' + esc(x.slides.legende) +
       (x.slides.hashtags ? "\n\n" + esc(x.slides.hashtags) : "") + '</div>';
+    const av = x.slides.a_verifier;
+    if(Array.isArray(av) && av.length){
+      s += '<div class="check"><b>À vérifier sur l\'article avant publication</b><ul>' +
+        av.map(v => '<li>' + esc(v) + '</li>').join("") + '</ul></div>';
+    }
     s += '<div class="row">' +
       '<button class="btn" data-act="copyslides">Copier le carrousel</button>' +
       '<button class="btn" data-act="dlslides">Télécharger .md</button>' +
@@ -425,10 +546,17 @@ function parseJson(s){
 }
 
 const STYLE = "Tu écris pour Escale sous les étoiles, un compte de vulgarisation astronomique en français. " +
-  "Registre clair et vivant, phrases courtes, tutoiement proscrit, jargon expliqué. " +
+  "Registre clair et vivant, phrases courtes, jargon expliqué. " +
   "Interdits absolus : les tirets cadratins, l'expression vite fait, les points d'exclamation en rafale, " +
-  "et toute formule creuse du type c'est fascinant. Tu n'inventes aucun chiffre ni aucune citation : " +
-  "tu te limites strictement aux informations fournies.";
+  "et toute formule creuse du type c'est fascinant.\n\n" +
+  "RÈGLE DE FIABILITÉ, la plus importante de toutes. Tu ne disposes que du texte fourni. " +
+  "Tu n'ajoutes aucun chiffre, aucune date, aucun nom propre, aucune distance, aucune mesure " +
+  "et aucune citation qui n'y figure pas explicitement, même si tu penses les connaître par ailleurs. " +
+  "Tu ne combles jamais un trou par une formulation plausible. " +
+  "Tu ne transformes pas une hypothèse, une intention ou une prévision en fait accompli : " +
+  "si le texte dit prévu, envisagé ou pourrait, tu gardes cette nuance. " +
+  "Si une information manque pour rédiger un passage, tu écris explicitement qu'elle n'est pas " +
+  "dans la source plutôt que de l'inventer. Un blanc assumé vaut mieux qu'une erreur.";
 
 async function translateAll(){
   const todo = items.filter(x => !x.fr);
@@ -461,6 +589,7 @@ async function translateAll(){
       render();
     }
     toast("Titres traduits");
+    pickTop(false);
   }catch(e){
     toast("Traduction impossible : " + e.message);
   }finally{
@@ -472,21 +601,33 @@ async function makeSlides(x){
   if(!hasAI()){ toast("Mets la page en ligne pour activer les carrousels"); return; }
   x.working = true; render();
   try{
+    const credit = x.author ? x.author + " pour " + x.src : x.src;
     const out = await ask(
       STYLE + " Tu réponds uniquement par du JSON, sans texte autour.",
       "Rédige un carrousel Instagram de 6 slides à partir de cette actualité.\n\n" +
-      "Titre : " + x.title + "\nSource : " + x.src + "\nExtrait : " + x.excerpt + "\n\n" +
+      "Titre : " + x.title + "\n" +
+      "Signature : " + credit + "\n" +
+      "Lien : " + x.link + "\n" +
+      (x.social ? "NATURE DE LA SOURCE : message publié sur un réseau social, pas un article de presse. " +
+        "Traite l'information comme une indication à confirmer et dis le dans la légende.\n" : "") +
+      "Extrait disponible : " + x.excerpt + "\n\n" +
       "Structure imposée : slide 1 accroche qui donne envie de faire défiler, " +
       "slide 2 le contexte en une idée, slide 3 le fait précis, " +
       "slide 4 pourquoi cela compte, slide 5 le détail ou le chiffre marquant, " +
       "slide 6 ce qu'il faut retenir plus une invitation à commenter.\n" +
-      "Chaque slide : un titre de 5 mots maximum et un texte de 25 à 40 mots.\n" +
-      "Ajoute une légende de publication de 3 à 5 phrases se terminant par la mention de la source, " +
-      "et une ligne de 8 hashtags français et anglais pertinents.\n" +
-      "Si l'extrait est trop maigre pour un point, dis le franchement dans le texte du slide " +
-      "au lieu d'inventer.\n" +
-      "Format JSON : {\"slides\":[{\"titre\":\"\",\"texte\":\"\"}],\"legende\":\"\",\"hashtags\":\"\"}",
-      2000
+      "Chaque slide : un titre de 5 mots maximum et un texte de 25 à 40 mots.\n\n" +
+      "L'extrait ci-dessus est court. S'il ne suffit pas pour un slide, écris dans le texte de ce slide " +
+      "ce qui manque et où le chercher, au lieu de meubler.\n\n" +
+      "Trois éléments en plus des slides.\n" +
+      "legende : 3 à 5 phrases, se terminant obligatoirement par le crédit exact " +
+      "de la signature indiquée ci-dessus, suivi du lien.\n" +
+      "a_verifier : la liste des points de ton texte qu'il faut confirmer sur l'article original " +
+      "avant publication, notamment tout chiffre, nom ou date. Sois exhaustif et sévère avec toi-même. " +
+      "S'il n'y a rien à vérifier, mets une liste vide.\n" +
+      "hashtags : 8 hashtags français et anglais pertinents.\n\n" +
+      "Format JSON : {\"slides\":[{\"titre\":\"\",\"texte\":\"\"}],\"legende\":\"\"," +
+      "\"a_verifier\":[\"\"],\"hashtags\":\"\"}",
+      2200
     );
     x.slides = parseJson(out);
     cacheSave(x);
@@ -499,12 +640,20 @@ async function makeSlides(x){
 }
 
 function slidesText(x){
-  let s = (x.fr || x.title) + "\n" + x.src + " · " + new Date(x.t).toLocaleString("fr-FR") + "\n" + x.link + "\n\n";
+  let s = (x.fr || x.title) + "\n" +
+    (x.author ? x.author + " pour " + x.src : x.src) + " · " +
+    new Date(x.t).toLocaleString("fr-FR") + "\n" + x.link + "\n" +
+    (x.social ? "Source : message de réseau social, information à confirmer\n" : "") + "\n";
   x.slides.slides.forEach((sl, i) => {
     s += "SLIDE " + (i+1) + " · " + sl.titre + "\n" + sl.texte + "\n\n";
   });
   if(x.slides.legende) s += "LÉGENDE\n" + x.slides.legende + "\n\n";
-  if(x.slides.hashtags) s += x.slides.hashtags + "\n";
+  if(x.slides.hashtags) s += x.slides.hashtags + "\n\n";
+  const av = x.slides.a_verifier;
+  if(Array.isArray(av) && av.length){
+    s += "À VÉRIFIER AVANT PUBLICATION\n";
+    av.forEach(v => { s += "- " + v + "\n"; });
+  }
   return s;
 }
 
@@ -555,6 +704,15 @@ document.getElementById("list").addEventListener("click", e => {
   if(e.target.closest("a")) return;
   openId = (openId === x.key) ? null : x.key;
   render();
+});
+
+document.getElementById("top").addEventListener("click", e => {
+  if(e.target.closest("#reTop")){ pickTop(true); return; }
+  const p = e.target.closest(".pick"); if(!p) return;
+  openId = p.dataset.go;
+  render();
+  const el = document.querySelector('.item[data-k="' + CSS.escape(openId) + '"]');
+  if(el) el.scrollIntoView({behavior:"smooth", block:"center"});
 });
 
 document.getElementById("refresh").addEventListener("click", load);
