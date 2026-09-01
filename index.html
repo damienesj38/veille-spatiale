@@ -86,6 +86,20 @@ h1 em{font-style:italic;color:var(--glow);font-weight:400}
 .slide .pu{margin:0;padding-left:17px;font-size:13.5px;color:var(--dim)}
 .slide .pu li{margin-bottom:3px}
 .slide .vis{margin-top:6px;font-size:12px;color:var(--faint);font-style:italic}
+.item.lu .fr{color:var(--dim);font-weight:400}
+.item.lu .fr.raw{color:var(--faint)}
+.item.lu .excerpt{color:var(--faint)}
+.item.lu .age{opacity:.4}
+.tag{display:inline-block;font-size:10.5px;padding:1px 6px;border-radius:2px;letter-spacing:.02em}
+.t-ok{background:#16301f;color:var(--ok)}
+.t-warn{background:#3a2c12;color:var(--amber)}
+.t-lu{background:#1c2431;color:var(--faint)}
+.made{border-bottom:1px solid var(--line);padding:15px 0}
+.mh{display:flex;gap:12px;align-items:flex-start}
+.mh > div{flex:1;min-width:0}
+.mt{font-family:var(--serif);font-size:18px;font-weight:600;line-height:1.3}
+.mm{font-size:12px;color:var(--faint);margin-top:3px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.mb{margin-top:12px}
 .seg{display:flex;border:1px solid var(--line);border-radius:3px;overflow:hidden}
 .seg button{padding:6px 13px;font-size:13px;color:var(--dim);border-right:1px solid var(--line)}
 .seg button:last-child{border-right:none}
@@ -171,7 +185,7 @@ input[type=checkbox]{accent-color:#4c8fb5;width:13px;height:13px}
   <div class="hd2">
     <button class="btn" id="refresh">Actualiser</button>
     <button class="btn key" id="translate">Traduire les titres</button>
-    <div class="seg"><button id="navNews" aria-pressed="true">24 h</button><button id="navArch">Archives</button></div>
+    <div class="seg"><button id="navNews" aria-pressed="true">24 h</button><button id="navMade">Carrousels</button><button id="navArch">Archives</button></div>
     <button class="btn" id="carnetBtn">Carnet<span id="carnetCount"></span></button>
     <button class="btn" id="settings">Reglages</button>
     <span class="solar" id="solar"></span>
@@ -183,6 +197,7 @@ input[type=checkbox]{accent-color:#4c8fb5;width:13px;height:13px}
     <section id="top" hidden></section>
     <div id="list"><p class="empty">Chargement…</p></div>
   </div>
+  <div id="viewMade" hidden></div>
   <div id="viewArch" hidden></div>
 </div>
 
@@ -599,11 +614,15 @@ function render(){
     const cls = h < 3 ? "h3" : h < 12 ? "h12" : "";
     const open = openId === x.key;
     const spot = top3 && top3.picks.some(p => p.key === x.key);
-    return '<article class="item' + (spot ? " spot" : "") + '" data-k="' + esc(x.key) + '">' +
+    const vu = lus.has(x.key);
+    const fait = made.some(m => m.key === x.key);
+    return '<article class="item' + (spot ? " spot" : "") + (vu ? " lu" : "") + '" data-k="' + esc(x.key) + '">' +
       '<div class="head">' +
         '<div class="age ' + cls + '"></div>' +
         '<div>' +
-          '<div class="meta"><span class="s">' + esc(x.src) + '</span> · ' + ago(x.t) + '</div>' +
+          '<div class="meta"><span class="s">' + esc(x.src) + '</span> · ' + ago(x.t) +
+            (fait ? ' <span class="tag t-ok">carrousel</span>' : '') +
+            (vu && !fait ? ' <span class="tag t-lu">lu</span>' : '') + '</div>' +
           '<p class="fr' + (x.fr ? "" : " raw") + '">' + esc(x.fr || x.title) + '</p>' +
           (x.fr ? '<p class="orig">' + esc(x.title) + '</p>' : '') +
         '</div>' +
@@ -627,26 +646,9 @@ function mark(txt, terms){
   return out;
 }
 
-function detailHtml(x){
-  let s = '<div class="detail">';
-  if(x.img) s += '<img src="' + esc(x.img) + '" alt="" loading="lazy" onerror="this.remove()">';
-  s += '<div class="lbl">Source</div>';
-  s += '<p><a href="' + esc(x.link) + '" target="_blank" rel="noopener">' + esc(x.src) + ' · ouvrir l\'article original</a><br>' +
-       '<span style="color:var(--faint);font-size:12.5px">' + esc(x.link) + '</span></p>';
-  if(x.author) s += '<div class="lbl">Signé</div><p>' + esc(x.author) + '</p>';
-  s += '<div class="lbl">Titre d\'origine</div><p>' + esc(x.title) + '</p>';
-  if(x.excerpt) s += '<div class="lbl">Extrait du flux</div><p>' + esc(x.excerpt) + '</p>';
-  s += '<div class="row">' +
-    '<button class="btn key" data-act="slides"' + (x.working ? " disabled" : "") + '>' +
-      (x.working ? (x.step || "…") : x.slides ? "Régénérer le carrousel" : "Générer le carrousel") + '</button>' +
-    '<button class="btn" data-act="copylink">Copier le lien</button>' +
-    (x.slides ? '<button class="btn" data-act="verify"' + (x.checking ? " disabled" : "") + '>' +
-      (x.checking ? "Relecture…" : "Relire") + '</button>' : '') +
-    '<button class="btn' + (inCarnet(x.key) ? " on" : "") + '" data-act="keep">' +
-      (inCarnet(x.key) ? "Dans le carnet" : "Garder") + '</button>' +
-  '</div>';
-
-  if(x.slides){
+function slidesHtml(x){
+  let s = '';
+  if(!x.slides) return s;
     s += '<div class="slides">';
     if(x.slides._note) s += '<div class="note">Rédigé sur : ' + esc(x.slides._note) + '</div>';
     if(x.slides.titre){
@@ -689,10 +691,35 @@ function detailHtml(x){
       s += '<div class="check soft"><b>À confirmer sur l\'article</b><ul>' +
         av.map(v => '<li>' + esc(v) + '</li>').join("") + '</ul></div>';
     }
+    s += '</div>';
+  return s;
+}
+
+function detailHtml(x){
+  let s = '<div class="detail">';
+  if(x.img) s += '<img src="' + esc(x.img) + '" alt="" loading="lazy" onerror="this.remove()">';
+  s += '<div class="lbl">Source</div>';
+  s += '<p><a href="' + esc(x.link) + '" target="_blank" rel="noopener">' + esc(x.src) + ' · ouvrir l\'article original</a><br>' +
+       '<span style="color:var(--faint);font-size:12.5px">' + esc(x.link) + '</span></p>';
+  if(x.author) s += '<div class="lbl">Signé</div><p>' + esc(x.author) + '</p>';
+  s += '<div class="lbl">Titre d\'origine</div><p>' + esc(x.title) + '</p>';
+  if(x.excerpt) s += '<div class="lbl">Extrait du flux</div><p>' + esc(x.excerpt) + '</p>';
+  s += '<div class="row">' +
+    '<button class="btn key" data-act="slides"' + (x.working ? " disabled" : "") + '>' +
+      (x.working ? (x.step || "…") : x.slides ? "Régénérer le carrousel" : "Générer le carrousel") + '</button>' +
+    '<button class="btn" data-act="copylink">Copier le lien</button>' +
+    (x.slides ? '<button class="btn" data-act="verify"' + (x.checking ? " disabled" : "") + '>' +
+      (x.checking ? "Relecture…" : "Relire") + '</button>' : '') +
+    '<button class="btn' + (inCarnet(x.key) ? " on" : "") + '" data-act="keep">' +
+      (inCarnet(x.key) ? "Dans le carnet" : "Garder") + '</button>' +
+  '</div>';
+
+  if(x.slides){
+    s += slidesHtml(x);
     s += '<div class="row">' +
       '<button class="btn" data-act="copyslides">Copier le carrousel</button>' +
       '<button class="btn" data-act="dlslides">Télécharger .md</button>' +
-    '</div></div>';
+    '</div>';
   }
   return s + '</div>';
 }
@@ -848,7 +875,7 @@ async function makeSlides(x){
     x.slides = parseJson(out);
     x.slides._note = x.source_note;
     x.slides._full = art.ok;
-    cacheSave(x);
+    cacheSave(x); saveMade(x);
     toast(art.ok ? "Carrousel prêt, écrit sur l'article complet" : "Carrousel prêt, sur extrait seulement");
     x.working = false; x.step = null;
     await verify(x);
@@ -920,6 +947,7 @@ async function verify(x){
       partiel: !x.slides._full
     };
     cacheSave(x);
+    if(made.some(m => m.key === x.key)) saveMade(x);
     const n = x.slides._check.ecarts.length;
     toast(n ? "Relecture : " + n + " point(s) a revoir" : "Relecture : rien a signaler");
   }catch(e){
@@ -1010,8 +1038,9 @@ document.getElementById("list").addEventListener("click", e => {
     }
     return;
   }
-  if(e.target.closest("a")) return;
+  if(e.target.closest("a")){ marquerLu(x.key); render(); return; }
   openId = (openId === x.key) ? null : x.key;
+  if(openId) marquerLu(x.key);
   render();
 });
 
@@ -1122,6 +1151,111 @@ document.getElementById("dlgSave").addEventListener("click", () => {
   dlg.close();
   load();
 });
+
+/* ---------- articles lus ---------- */
+let lus = new Set(store.get("v24.lus", []));
+function marquerLu(k){
+  if(lus.has(k)) return;
+  lus.add(k);
+  const arr = [...lus];
+  store.set("v24.lus", arr.slice(-600));
+}
+
+/* ---------- carrousels generes ---------- */
+let made = store.get("v24.made", []);
+let madeOpen = null;
+
+function saveMade(x){
+  const snap = {
+    key: x.key, title: x.title, fr: x.fr, link: x.link, src: x.src,
+    t: x.t, excerpt: x.excerpt, img: x.img, author: x.author,
+    social: x.social, slides: x.slides, quand: Date.now()
+  };
+  const i = made.findIndex(m => m.key === x.key);
+  if(i >= 0) made[i] = snap; else made.unshift(snap);
+  if(made.length > 80) made.length = 80;
+  store.set("v24.made", made);
+  drawMadeBtn();
+}
+
+function drawMadeBtn(){
+  const b = document.getElementById("navMade");
+  if(b) b.textContent = "Carrousels" + (made.length ? " (" + made.length + ")" : "");
+}
+
+function renderMade(){
+  const box = document.getElementById("viewMade");
+  if(!made.length){
+    box.innerHTML = '<p class="empty">Aucun carrousel pour l\'instant. ' +
+      'Genere en un depuis l\'onglet 24 h ou depuis l\'ephemeride.</p>';
+    return;
+  }
+  box.innerHTML = '<div class="eh"><h2>Carrousels generes</h2>' +
+    '<button class="btn" id="madeExport">Tout exporter</button></div>' +
+    made.map(m => {
+      const ouvert = madeOpen === m.key;
+      const ck = m.slides && m.slides._check;
+      let etat = "";
+      if(ck) etat = ck.ecarts.length
+        ? '<span class="tag t-warn">' + ck.ecarts.length + ' point(s) a revoir</span>'
+        : '<span class="tag t-ok">relu, conforme</span>';
+      return '<article class="made" data-m="' + esc(m.key) + '">' +
+        '<div class="mh">' +
+          '<div><div class="mt">' + esc((m.slides && m.slides.titre) || m.fr || m.title) + '</div>' +
+          '<div class="mm">' + esc(m.src) + ' &middot; genere le ' +
+            new Date(m.quand).toLocaleDateString("fr-FR") + ' a ' +
+            new Date(m.quand).toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit"}) +
+            ' ' + etat + '</div></div>' +
+          '<button class="btn mo">' + (ouvert ? "replier" : "voir") + '</button>' +
+        '</div>' +
+        (ouvert ? madeBody(m) : '') +
+      '</article>';
+    }).join("");
+}
+
+function madeBody(m){
+  const x = Object.assign({}, m);
+  let s = '<div class="mb">';
+  s += '<div class="cb"><a href="' + esc(m.link) + '" target="_blank" rel="noopener">ouvrir la source</a>' +
+    '<button data-mact="copy">copier</button>' +
+    '<button data-mact="dl">telecharger .md</button>' +
+    '<button data-mact="del">supprimer</button></div>';
+  s += slidesHtml(x);
+  return s + '</div>';
+}
+
+document.getElementById("viewMade").addEventListener("click", e => {
+  if(e.target.id === "madeExport"){
+    let out = "# Carrousels generes\n\n";
+    made.forEach(m => { out += slidesText(m) + "\n---\n\n"; });
+    dlText(out, "carrousels-" + new Date().toISOString().slice(0,10) + ".md");
+    return;
+  }
+  const art = e.target.closest(".made"); if(!art) return;
+  const m = made.find(z => z.key === art.dataset.m); if(!m) return;
+  const b = e.target.closest("button[data-mact]");
+  if(b){
+    if(b.dataset.mact === "copy") navigator.clipboard.writeText(slidesText(m)).then(() => toast("Copie"));
+    if(b.dataset.mact === "dl") dlText(slidesText(m), "carrousel-" + new Date().toISOString().slice(0,10) + ".md");
+    if(b.dataset.mact === "del"){
+      made = made.filter(z => z.key !== m.key);
+      store.set("v24.made", made);
+      drawMadeBtn(); renderMade();
+    }
+    return;
+  }
+  if(e.target.closest("a")) return;
+  madeOpen = madeOpen === m.key ? null : m.key;
+  renderMade();
+});
+
+function dlText(txt, nom){
+  const blob = new Blob([txt], {type:"text/markdown"});
+  const el = document.createElement("a");
+  el.href = URL.createObjectURL(blob);
+  el.download = nom;
+  el.click(); URL.revokeObjectURL(el.href);
+}
 
 /* =========== ARCHIVES : ephemeride + recherche d'images =========== */
 
@@ -1386,10 +1520,9 @@ async function archCarousel(payload){
       author: "", social: false, slides: sl, saved: Date.now()
     };
     sl._note = "ephemeride, aucun article source";
-    if(!inCarnet(item.key)){ carnet.unshift(item); store.set("v24.carnet", carnet); drawCarnetBtn(); }
-    toast("Carrousel ajoute au carnet");
-    drawCarnet();
-    document.getElementById("carnetDlg").showModal();
+    saveMade(item);
+    toast("Carrousel pret, onglet Carrousels");
+    setView("made");
   }catch(e){
     toast("Echec : " + e.message);
   }
@@ -1425,18 +1558,22 @@ document.getElementById("viewArch").addEventListener("keydown", e => {
 });
 
 function setView(v){
-  const news = v === "news";
-  document.getElementById("viewNews").hidden = !news;
-  document.getElementById("viewArch").hidden = news;
-  document.getElementById("navNews").setAttribute("aria-pressed", news);
-  document.getElementById("navArch").setAttribute("aria-pressed", !news);
-  if(!news) renderArch();
+  document.getElementById("viewNews").hidden = v !== "news";
+  document.getElementById("viewMade").hidden = v !== "made";
+  document.getElementById("viewArch").hidden = v !== "arch";
+  document.getElementById("navNews").setAttribute("aria-pressed", v === "news");
+  document.getElementById("navMade").setAttribute("aria-pressed", v === "made");
+  document.getElementById("navArch").setAttribute("aria-pressed", v === "arch");
+  if(v === "arch") renderArch();
+  if(v === "made") renderMade();
 }
 document.getElementById("navNews").addEventListener("click", () => setView("news"));
+document.getElementById("navMade").addEventListener("click", () => setView("made"));
 document.getElementById("navArch").addEventListener("click", () => setView("arch"));
 
 /* ---------- démarrage ---------- */
 drawCarnetBtn();
+drawMadeBtn();
 load();
 solar();
 setInterval(() => { load(); solar(); }, 15 * 60 * 1000);
