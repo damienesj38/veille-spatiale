@@ -173,7 +173,7 @@ input[type=checkbox]{accent-color:#4c8fb5;width:13px;height:13px}
     <button class="btn key" id="translate">Traduire les titres</button>
     <div class="seg"><button id="navNews" aria-pressed="true">24 h</button><button id="navArch">Archives</button></div>
     <button class="btn" id="carnetBtn">Carnet<span id="carnetCount"></span></button>
-    <button class="btn" id="settings">Sources</button>
+    <button class="btn" id="settings">Reglages</button>
     <span class="solar" id="solar"></span>
   </div>
 </header>
@@ -198,8 +198,15 @@ input[type=checkbox]{accent-color:#4c8fb5;width:13px;height:13px}
 </dialog>
 
 <dialog id="dlg">
-  <div class="dh">Sources</div>
+  <div class="dh">Reglages</div>
   <div class="db">
+    <label>Longueur des textes de slide</label>
+    <div class="seg" id="lenSeg">
+      <button data-len="court">Court</button>
+      <button data-len="moyen">Moyen</button>
+      <button data-len="long">Long</button>
+    </div>
+    <p class="hintline">Court pour des visuels charges, long pour des sujets techniques.</p>
     <label>Sources actives</label>
     <div class="srcs" id="srcs"></div>
     <label for="newFeed">Ajouter une source</label>
@@ -450,6 +457,13 @@ function cacheSave(x){
 
 /* ---------- carnet ---------- */
 let carnet = store.get("v24.carnet", []);
+
+const LONGUEURS = {
+  court: {label:"Court", mots:"30 a 45 mots", puces:"3 a 4 puces de 6 mots maximum"},
+  moyen: {label:"Moyen", mots:"45 a 65 mots", puces:"4 a 5 puces d'une ligne"},
+  long:  {label:"Long",  mots:"65 a 90 mots", puces:"5 a 6 puces d'une ligne"}
+};
+function longueur(){ return LONGUEURS[store.get("v24.len", "moyen")] || LONGUEURS.moyen; }
 
 function inCarnet(k){ return carnet.some(c => c.key === k); }
 
@@ -794,29 +808,37 @@ async function makeSlides(x){
       (x.social ? "NATURE : message de réseau social, information à confirmer.\n" : "") +
       "\nTEXTE SOURCE\n" + corps + "\n\nFIN DU TEXTE SOURCE\n\n" +
       "FORMAT ATTENDU\n" +
-      "Une couverture, puis 3 ou 4 slides de contenu. Quatre si la matière est riche, trois sinon. " +
+      "Une couverture, puis 3 ou 4 slides de contenu. Quatre si la matiere est riche, trois sinon. " +
       "Ne gonfle jamais pour atteindre quatre.\n\n" +
-      "Couverture : un titre de 1 à 3 mots en capitales, souvent un nom propre ou l'objet central, " +
-      "et un sous-titre de 3 à 6 mots qui crée la tension. Exemple de ton juste : " +
-      "titre SOPHIE ADENOT, sous-titre RETOURNE DANS LE VIDE.\n\n" +
+      "Couverture : un titre de 1 a 3 mots en capitales, souvent un nom propre ou l'objet central, " +
+      "et un sous-titre de 3 a 6 mots qui cree la tension.\n\n" +
+      "REGLE LA PLUS IMPORTANTE SUR LA STRUCTURE. Le slide 2, celui qui suit immediatement " +
+      "la couverture, expose le fait lui-meme, sans detour. Qui, quoi, quand, et pourquoi " +
+      "on en parle aujourd'hui. Apres l'avoir lu, quelqu'un qui ne connait pas le sujet doit " +
+      "pouvoir resumer l'information en une phrase. " +
+      "Tu n'ouvres jamais sur une anecdote, une citation, une mise en scene ou une question " +
+      "rhetorique : ces elements viennent apres, une fois le fait pose, et seulement s'ils " +
+      "apportent quelque chose.\n" +
+      "Les slides suivants approfondissent : comment cela fonctionne, ce que cela change, " +
+      "le detail concret qui marque.\n\n" +
       "Chaque slide de contenu porte un titre court en capitales, 5 mots maximum, " +
-      "volontiers formulé en question directe.\n" +
-      "Deux mises en forme possibles, à choisir selon le contenu. " +
-      "Le type texte pour un paragraphe dense de 70 à 110 mots, qui raconte vraiment. " +
-      "Le type liste pour ce qui s'énumère naturellement : un déroulé horaire, " +
-      "des chiffres techniques, des façons de suivre l'événement. Trois à six puces, une ligne chacune.\n" +
-      "Ne sois pas avare de matière : si l'article contient des détails concrets, des chiffres " +
-      "ou des explications techniques, sers-t'en. Un slide trop court dessert le sujet.\n\n" +
-      "Pour chaque slide, le champ surligner contient 2 à 4 expressions exactes, " +
+      "volontiers formule en question directe. Le titre annonce le contenu du slide, " +
+      "il n'est pas une accroche mysterieuse.\n" +
+      "Deux mises en forme possibles. Le type texte pour un paragraphe de " + longueur().mots + ". " +
+      "Le type liste pour ce qui s'enumere naturellement, un deroule horaire, des chiffres " +
+      "techniques, des facons de suivre l'evenement : " + longueur().puces + ".\n" +
+      "Va a l'essentiel. Chaque phrase doit apporter une information nouvelle. " +
+      "Coupe tout ce qui est du remplissage, de la transition ou de l'emphase.\n\n" +
+      "Pour chaque slide, le champ surligner contient 2 a 4 expressions exactes, " +
       "reprises mot pour mot du texte du slide, qui seront mises en couleur. " +
-      "Choisis les segments porteurs de sens : un chiffre marquant, une première, " +
-      "un enjeu. Jamais un mot isolé sans intérêt, jamais une phrase entière.\n\n" +
-      "visuel : pour chaque slide, une phrase décrivant l'image à chercher.\n" +
-      "legende : 3 à 5 phrases, terminées obligatoirement par le crédit exact " +
+      "Choisis les segments porteurs de sens : un chiffre marquant, une premiere, " +
+      "un enjeu. Jamais un mot isole sans interet, jamais une phrase entiere.\n\n" +
+      "visuel : pour chaque slide, une phrase decrivant l'image a chercher.\n" +
+      "legende : 3 a 5 phrases, terminees obligatoirement par le credit exact " +
       "de la signature ci-dessus, suivi du lien.\n" +
-      "a_verifier : tous les points à confirmer sur l'article avant publication, " +
-      "chiffres, noms et dates en priorité. Sois sévère avec toi-même. Liste vide si rien.\n" +
-      "hashtags : 8 hashtags français et anglais.\n\n" +
+      "a_verifier : tous les points a confirmer sur l'article avant publication, " +
+      "chiffres, noms et dates en priorite. Sois severe avec toi-meme. Liste vide si rien.\n" +
+      "hashtags : 8 hashtags francais et anglais.\n\n" +
       "JSON attendu : {\"titre\":\"\",\"sous_titre\":\"\"," +
       "\"slides\":[{\"titre\":\"\",\"type\":\"texte\",\"texte\":\"\",\"puces\":[]," +
       "\"surligner\":[\"\"],\"visuel\":\"\"}]," +
@@ -1049,8 +1071,19 @@ function drawSrcs(){
     '</div>').join("");
 }
 document.getElementById("settings").addEventListener("click", () => {
+  const cur = store.get("v24.len", "moyen");
+  document.querySelectorAll("#lenSeg button").forEach(b =>
+    b.setAttribute("aria-pressed", b.dataset.len === cur));
   drawSrcs();
   dlg.showModal();
+});
+
+document.getElementById("lenSeg").addEventListener("click", e => {
+  const b = e.target.closest("button[data-len]"); if(!b) return;
+  store.set("v24.len", b.dataset.len);
+  document.querySelectorAll("#lenSeg button").forEach(x =>
+    x.setAttribute("aria-pressed", x === b));
+  toast("Longueur : " + LONGUEURS[b.dataset.len].label + ". Regenere un carrousel pour l'appliquer.");
 });
 
 document.getElementById("addFeed").addEventListener("click", () => {
@@ -1329,8 +1362,11 @@ async function archCarousel(payload){
       "c'est un contenu commemoratif, une erreur de date serait immediatement reperee.\n\n" +
       "FORMAT\nUne couverture, puis 3 ou 4 slides de contenu.\n" +
       "Couverture : titre de 1 a 3 mots en capitales, sous-titre de 3 a 6 mots.\n" +
+      "Le slide 2 expose le fait : ce qui s'est passe ce jour-la, sans detour ni mise en scene. " +
+      "Les suivants approfondissent.\n" +
       "Chaque slide : titre court en capitales, 5 mots maximum. " +
-      "Type texte pour un paragraphe de 70 a 110 mots, type liste pour ce qui s'enumere.\n" +
+      "Type texte pour un paragraphe de " + longueur().mots + ", type liste pour ce qui s'enumere.\n" +
+      "Va a l'essentiel, chaque phrase doit apporter une information.\n" +
       "surligner : 2 a 4 expressions exactes du texte du slide.\n" +
       "visuel : l'image a chercher pour ce slide.\n" +
       "legende : 3 a 5 phrases. Ne cite aucune source que tu n'as pas.\n" +
