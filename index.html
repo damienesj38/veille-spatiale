@@ -86,6 +86,28 @@ h1 em{font-style:italic;color:var(--glow);font-weight:400}
 .slide .pu{margin:0;padding-left:17px;font-size:13.5px;color:var(--dim)}
 .slide .pu li{margin-bottom:3px}
 .slide .vis{margin-top:6px;font-size:12px;color:var(--faint);font-style:italic}
+.cit{border:1px solid var(--line);border-radius:3px;padding:10px 12px;margin-bottom:8px;background:var(--panel2)}
+.ct2{font-family:var(--serif);font-size:15.5px;line-height:1.3;margin-bottom:3px}
+.cm{font-size:11.5px;color:var(--faint)}
+.cb{display:flex;gap:11px;margin-top:7px;font-size:12px}
+.cb a,.cb button{color:var(--dim);text-decoration:none;padding:0}
+.cb a:hover{color:var(--glow)}
+.cb button:hover{color:var(--ember)}
+.cempty{color:var(--faint);font-size:13px;margin:0}
+#carnetList{max-height:60vh;overflow-y:auto}
+.ok2{border:1px solid #2c5a44;background:#0f1b16;border-radius:3px;padding:11px 13px;font-size:13px;color:var(--dim)}
+.ok2 b{color:var(--ok);font-weight:500}
+.check.soft{border-color:#2c3a4c;background:#141b25}
+.check.soft b{color:var(--dim)}
+.check .pt{margin:0 0 6px;font-size:12px;color:var(--faint)}
+.check li{margin-bottom:8px;line-height:1.45}
+.check .w{color:var(--text);font-weight:500}
+.check i{color:var(--faint)}
+.g{display:inline-block;font-size:10.5px;padding:1px 6px;border-radius:2px;text-transform:uppercase;letter-spacing:.03em;vertical-align:1px}
+.g-erreur{background:#4a1d16;color:#ff9d85}
+.g-absent{background:#4a3a16;color:var(--amber)}
+.g-nuance{background:#1e3448;color:var(--glow)}
+.acts .on,.detail .btn.on{color:var(--amber);border-color:#5c4a1e;background:#211b0d}
 .note{font-size:12px;color:var(--faint);margin-bottom:2px}
 .check{border:1px solid #5c4a1e;background:#1d1810;border-radius:3px;padding:11px 13px;font-size:13px;color:var(--dim)}
 .check b{color:var(--amber);display:block;margin-bottom:5px;font-weight:500}
@@ -129,6 +151,7 @@ input[type=checkbox]{accent-color:#4c8fb5;width:13px;height:13px}
   <div class="hd2">
     <button class="btn" id="refresh">Actualiser</button>
     <button class="btn key" id="translate">Traduire les titres</button>
+    <button class="btn" id="carnetBtn">Carnet<span id="carnetCount"></span></button>
     <button class="btn" id="settings">Sources</button>
     <span class="solar" id="solar"></span>
   </div>
@@ -140,6 +163,15 @@ input[type=checkbox]{accent-color:#4c8fb5;width:13px;height:13px}
 </div>
 
 <div class="toast" id="toast"></div>
+
+<dialog id="carnetDlg">
+  <div class="dh">Carnet</div>
+  <div class="db" id="carnetList"></div>
+  <div class="df">
+    <button class="btn" id="carnetClose">Fermer</button>
+    <button class="btn" id="carnetExport">Tout exporter</button>
+  </div>
+</dialog>
 
 <dialog id="dlg">
   <div class="dh">Sources</div>
@@ -392,6 +424,54 @@ function cacheSave(x){
   store.set("v24.cache", c);
 }
 
+/* ---------- carnet ---------- */
+let carnet = store.get("v24.carnet", []);
+
+function inCarnet(k){ return carnet.some(c => c.key === k); }
+
+function toggleCarnet(x){
+  const i = carnet.findIndex(c => c.key === x.key);
+  if(i >= 0){
+    carnet.splice(i, 1);
+    toast("Retire du carnet");
+  }else{
+    carnet.unshift({
+      key: x.key, title: x.title, fr: x.fr, link: x.link, src: x.src,
+      t: x.t, excerpt: x.excerpt, img: x.img, author: x.author,
+      social: x.social, slides: x.slides || null, saved: Date.now()
+    });
+    if(carnet.length > 60) carnet.length = 60;
+    toast("Ajoute au carnet");
+  }
+  store.set("v24.carnet", carnet);
+  drawCarnetBtn();
+  render();
+}
+
+function drawCarnetBtn(){
+  document.getElementById("carnetCount").textContent = carnet.length ? " (" + carnet.length + ")" : "";
+}
+
+function drawCarnet(){
+  const box = document.getElementById("carnetList");
+  if(!carnet.length){
+    box.innerHTML = '<p class="cempty">Le carnet est vide. Ouvre un article et clique sur Garder pour le mettre de cote.</p>';
+    return;
+  }
+  box.innerHTML = carnet.map((c, i) => {
+    const d = new Date(c.t);
+    return '<div class="cit">' +
+      '<div class="ct2">' + esc(c.fr || c.title) + '</div>' +
+      '<div class="cm">' + esc(c.src) + ' &middot; ' + d.toLocaleDateString("fr-FR") +
+        (c.slides ? ' &middot; carrousel redige' : '') + '</div>' +
+      '<div class="cb">' +
+        '<a href="' + esc(c.link) + '" target="_blank" rel="noopener">ouvrir l\'article</a>' +
+        (c.slides ? '<button data-copy="' + i + '">copier le carrousel</button>' : '') +
+        '<button data-drop="' + i + '">retirer</button>' +
+      '</div></div>';
+  }).join("");
+}
+
 /* ---------- top 3 ---------- */
 let top3 = null;      // {picks:[{key, why}], at}
 let top3Busy = false;
@@ -522,6 +602,10 @@ function detailHtml(x){
     '<button class="btn key" data-act="slides"' + (x.working ? " disabled" : "") + '>' +
       (x.working ? (x.step || "…") : x.slides ? "Régénérer le carrousel" : "Générer le carrousel") + '</button>' +
     '<button class="btn" data-act="copylink">Copier le lien</button>' +
+    (x.slides ? '<button class="btn" data-act="verify"' + (x.checking ? " disabled" : "") + '>' +
+      (x.checking ? "Relecture…" : "Relire") + '</button>' : '') +
+    '<button class="btn' + (inCarnet(x.key) ? " on" : "") + '" data-act="keep">' +
+      (inCarnet(x.key) ? "Dans le carnet" : "Garder") + '</button>' +
   '</div>';
 
   if(x.slides){
@@ -545,9 +629,26 @@ function detailHtml(x){
     });
     if(x.slides.legende) s += '<div class="cap"><b>Légende</b>\n' + esc(x.slides.legende) +
       (x.slides.hashtags ? "\n\n" + esc(x.slides.hashtags) : "") + '</div>';
+    const ck = x.slides._check;
+    if(x.checking){
+      s += '<div class="check"><b>Relecture de contrôle en cours…</b></div>';
+    }else if(ck){
+      if(!ck.ecarts.length){
+        s += '<div class="ok2"><b>Relecture de contrôle : aucun écart détecté</b>' +
+          (ck.partiel ? '<br>Attention, la vérification a porté sur un extrait, pas sur l\'article entier.' : '') +
+          '</div>';
+      }else{
+        s += '<div class="check"><b>Relecture de contrôle : ' + ck.ecarts.length + ' point(s) à revoir</b>' +
+          (ck.partiel ? '<p class="pt">Vérification faite sur un extrait seulement.</p>' : '') + '<ul>' +
+          ck.ecarts.map(e => '<li><span class="g g-' + esc(e.gravite || "nuance") + '">' +
+            esc(e.gravite || "nuance") + '</span> <b class="w">' + esc(e.ou || "") + '</b><br>' +
+            '<i>' + esc(e.affirmation || "") + '</i><br>' + esc(e.probleme || "") + '</li>').join("") +
+          '</ul></div>';
+      }
+    }
     const av = x.slides.a_verifier;
     if(Array.isArray(av) && av.length){
-      s += '<div class="check"><b>À vérifier sur l\'article avant publication</b><ul>' +
+      s += '<div class="check soft"><b>À confirmer sur l\'article</b><ul>' +
         av.map(v => '<li>' + esc(v) + '</li>').join("") + '</ul></div>';
     }
     s += '<div class="row">' +
@@ -632,6 +733,8 @@ async function translateAll(){
   }
 }
 
+const corpus = new Map();   // key -> texte de l'article, gardé le temps de la session
+
 async function fetchArticle(x){
   if(x.social) return {ok:false, why:"message de réseau social, pas d'article à récupérer"};
   try{
@@ -646,6 +749,7 @@ async function makeSlides(x){
   try{
     const art = await fetchArticle(x);
     const corps = art.ok ? art.text : x.excerpt;
+    corpus.set(x.key, corps);
     x.source_note = art.ok
       ? "article complet, " + art.chars + " signes"
       : "extrait du flux seulement (" + art.why + ")";
@@ -674,9 +778,11 @@ async function makeSlides(x){
       "Chaque slide de contenu porte un titre court en capitales, 5 mots maximum, " +
       "volontiers formulé en question directe.\n" +
       "Deux mises en forme possibles, à choisir selon le contenu. " +
-      "Le type texte pour un paragraphe de 45 à 70 mots. " +
+      "Le type texte pour un paragraphe dense de 70 à 110 mots, qui raconte vraiment. " +
       "Le type liste pour ce qui s'énumère naturellement : un déroulé horaire, " +
-      "des chiffres techniques, des façons de suivre l'événement. Trois à cinq puces courtes.\n\n" +
+      "des chiffres techniques, des façons de suivre l'événement. Trois à six puces, une ligne chacune.\n" +
+      "Ne sois pas avare de matière : si l'article contient des détails concrets, des chiffres " +
+      "ou des explications techniques, sers-t'en. Un slide trop court dessert le sujet.\n\n" +
       "Pour chaque slide, le champ surligner contient 2 à 4 expressions exactes, " +
       "reprises mot pour mot du texte du slide, qui seront mises en couleur. " +
       "Choisis les segments porteurs de sens : un chiffre marquant, une première, " +
@@ -695,8 +801,11 @@ async function makeSlides(x){
     );
     x.slides = parseJson(out);
     x.slides._note = x.source_note;
+    x.slides._full = art.ok;
     cacheSave(x);
     toast(art.ok ? "Carrousel prêt, écrit sur l'article complet" : "Carrousel prêt, sur extrait seulement");
+    x.working = false; x.step = null;
+    await verify(x);
   }catch(e){
     toast("Échec : " + e.message);
   }finally{
@@ -704,11 +813,81 @@ async function makeSlides(x){
   }
 }
 
+// Relecture de controle : chaque affirmation est confrontee au texte source.
+async function verify(x){
+  if(!x.slides || !hasAI()) return;
+  let corps = corpus.get(x.key);
+  if(!corps){
+    const art = await fetchArticle(x);
+    corps = art.ok ? art.text : x.excerpt;
+    corpus.set(x.key, corps);
+  }
+  x.checking = true; render();
+  try{
+    const draft = {
+      couverture: (x.slides.titre || "") + " / " + (x.slides.sous_titre || ""),
+      slides: (x.slides.slides || []).map(sl => ({
+        titre: sl.titre,
+        contenu: sl.type === "liste" ? (sl.puces || []).join(" | ") : sl.texte
+      })),
+      legende: x.slides.legende
+    };
+    const consigne = [
+      "Confronte le brouillon au texte source. Passe en revue chaque affirmation factuelle :",
+      "chiffres, dates, heures, durees, noms de personnes, d'engins et d'organisations,",
+      "lieux, liens de cause a effet, superlatifs et premieres.",
+      "",
+      "Signale un ecart dans ces cas : l'information ne figure pas dans la source,",
+      "elle la contredit, elle transforme une prevision ou une hypothese en fait etabli,",
+      "ou elle est exageree par rapport a ce que dit la source.",
+      "Ne signale jamais un choix de style, de ton ou de formulation.",
+      "Une reformulation fidele n'est pas un ecart.",
+      "",
+      "Gravite : erreur si c'est faux ou contredit par la source,",
+      "absent si l'information n'y figure pas et ne peut etre confirmee,",
+      "nuance si le sens est deforme ou durci.",
+      "",
+      "Le champ ou indique le slide concerne. Le champ affirmation reprend le passage exact.",
+      "Le champ probleme explique en une phrase, et dit ce que la source permet d'ecrire a la place.",
+      "",
+      "TEXTE SOURCE",
+      corps,
+      "FIN DU TEXTE SOURCE",
+      "",
+      "BROUILLON",
+      JSON.stringify(draft),
+      "",
+      'JSON attendu : {"verdict":"conforme" ou "a_corriger","ecarts":[{"ou":"","affirmation":"","probleme":"","gravite":"erreur"}]}'
+    ].join("\n");
+
+    const out = await ask(
+      "Tu es relecteur de verification pour un media scientifique. Tu es methodique et sans complaisance. " +
+      "Tu reponds uniquement par du JSON, sans texte autour.",
+      consigne,
+      1800
+    );
+    const v = parseJson(out);
+    x.slides._check = {
+      verdict: v.verdict,
+      ecarts: Array.isArray(v.ecarts) ? v.ecarts : [],
+      at: Date.now(),
+      partiel: !x.slides._full
+    };
+    cacheSave(x);
+    const n = x.slides._check.ecarts.length;
+    toast(n ? "Relecture : " + n + " point(s) a revoir" : "Relecture : rien a signaler");
+  }catch(e){
+    toast("Relecture impossible : " + e.message);
+  }finally{
+    x.checking = false; render();
+  }
+}
+
 function slidesText(x){
   const cr = x.author ? x.author + " pour " + x.src : x.src;
   let s = (x.fr || x.title) + "\n" + cr + " · " +
     new Date(x.t).toLocaleString("fr-FR") + "\n" + x.link + "\n";
-  if(x.slides._note) s += "Rédigé sur : " + x.slides._note + "\n";
+  if(x.slides && x.slides._note) s += "Rédigé sur : " + x.slides._note + "\n";
   if(x.social) s += "Source : message de réseau social, information à confirmer\n";
   s += "\n";
 
@@ -773,6 +952,8 @@ document.getElementById("list").addEventListener("click", e => {
     const a = b.dataset.act;
     if(a === "slides") makeSlides(x);
     if(a === "copylink") navigator.clipboard.writeText(x.link).then(() => toast("Lien copié"));
+    if(a === "verify") verify(x);
+    if(a === "keep") toggleCarnet(x);
     if(a === "copyslides") navigator.clipboard.writeText(slidesText(x)).then(() => toast("Carrousel copié"));
     if(a === "dlslides"){
       const blob = new Blob([slidesText(x)], {type:"text/markdown"});
@@ -795,6 +976,41 @@ document.getElementById("top").addEventListener("click", e => {
   render();
   const el = document.querySelector('.item[data-k="' + CSS.escape(openId) + '"]');
   if(el) el.scrollIntoView({behavior:"smooth", block:"center"});
+});
+
+const cdlg = document.getElementById("carnetDlg");
+document.getElementById("carnetBtn").addEventListener("click", () => { drawCarnet(); cdlg.showModal(); });
+document.getElementById("carnetClose").addEventListener("click", () => cdlg.close());
+document.getElementById("carnetList").addEventListener("click", e => {
+  const d = e.target.closest("button[data-drop]");
+  if(d){
+    carnet.splice(parseInt(d.dataset.drop, 10), 1);
+    store.set("v24.carnet", carnet);
+    drawCarnet(); drawCarnetBtn(); render();
+    return;
+  }
+  const c = e.target.closest("button[data-copy]");
+  if(c){
+    const it = carnet[parseInt(c.dataset.copy, 10)];
+    navigator.clipboard.writeText(slidesText(it)).then(() => toast("Carrousel copié"));
+  }
+});
+document.getElementById("carnetExport").addEventListener("click", () => {
+  if(!carnet.length){ toast("Le carnet est vide"); return; }
+  let out = "# Carnet · " + new Date().toLocaleDateString("fr-FR") + "\n\n";
+  carnet.forEach(c => {
+    out += "## " + (c.fr || c.title) + "\n";
+    out += (c.author ? c.author + " pour " + c.src : c.src) + " · " +
+      new Date(c.t).toLocaleDateString("fr-FR") + "\n" + c.link + "\n\n";
+    if(c.slides) out += slidesText(c) + "\n";
+    else if(c.excerpt) out += c.excerpt + "\n";
+    out += "\n---\n\n";
+  });
+  const blob = new Blob([out], {type:"text/markdown"});
+  const el = document.createElement("a");
+  el.href = URL.createObjectURL(blob);
+  el.download = "carnet-" + new Date().toISOString().slice(0,10) + ".md";
+  el.click(); URL.revokeObjectURL(el.href);
 });
 
 document.getElementById("refresh").addEventListener("click", load);
@@ -851,6 +1067,7 @@ document.getElementById("dlgSave").addEventListener("click", () => {
 });
 
 /* ---------- démarrage ---------- */
+drawCarnetBtn();
 load();
 solar();
 setInterval(() => { load(); solar(); }, 15 * 60 * 1000);
