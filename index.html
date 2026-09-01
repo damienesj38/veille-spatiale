@@ -77,8 +77,13 @@ dialog::backdrop{background:rgba(6,9,14,.75)}
 .db input:focus{border-color:var(--glow)}
 .db p{font-size:12.5px;color:var(--faint);margin:9px 0 0;line-height:1.5}
 .df{padding:13px 19px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--line)}
-.srcs{max-height:220px;overflow-y:auto;margin-top:6px}
+.srcs{max-height:200px;overflow-y:auto;margin-top:6px}
 .srcs div{display:flex;gap:8px;align-items:center;padding:2px 0;font-size:13px;color:var(--dim)}
+.srcs label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.srcs .kill{color:var(--faint);font-size:15px;line-height:1;padding:0 3px}
+.srcs .kill:hover{color:var(--ember)}
+.addbox{display:flex;gap:6px}
+.addbox input{flex:1;min-width:0}
 input[type=checkbox]{accent-color:#4c8fb5;width:13px;height:13px}
 :focus-visible{outline:2px solid var(--glow);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -111,6 +116,11 @@ input[type=checkbox]{accent-color:#4c8fb5;width:13px;height:13px}
   <div class="db">
     <label>Sources actives</label>
     <div class="srcs" id="srcs"></div>
+    <label for="newFeed">Ajouter une source</label>
+    <div class="addbox">
+      <input id="newFeed" placeholder="Coller une adresse de flux RSS" autocomplete="off">
+      <button class="btn" id="addFeed">Ajouter</button>
+    </div>
   </div>
   <div class="df">
     <button class="btn" id="dlgClose">Fermer</button>
@@ -153,7 +163,17 @@ const FEEDS=[
 ];
 
 const savedOn = store.get("v24.feeds", {});
-const feeds = FEEDS.map(f => ({...f, on: (f.id in savedOn) ? savedOn[f.id] : f.on}));
+const custom = store.get("v24.custom", []);
+const feeds = FEEDS.concat(custom).map(f => ({...f, on: (f.id in savedOn) ? savedOn[f.id] : f.on}));
+
+// nom lisible déduit de l'adresse : les profils Bluesky sont reconnus au passage
+function feedName(url){
+  const bs = /bsky\.app\/profile\/([^/]+)\/rss/i.exec(url);
+  if(bs) return "Bluesky · " + bs[1].replace(/\.bsky\.social$/i, "");
+  const yt = /youtube\.com\/feeds\/videos\.xml/i.test(url);
+  if(yt) return "YouTube";
+  try{ return new URL(url).hostname.replace(/^www\./, ""); }catch(e){ return url.slice(0, 40); }
+}
 
 let items = [];
 let openId = null;
@@ -541,11 +561,42 @@ document.getElementById("refresh").addEventListener("click", load);
 document.getElementById("translate").addEventListener("click", translateAll);
 
 const dlg = document.getElementById("dlg");
-document.getElementById("settings").addEventListener("click", () => {
+function drawSrcs(){
   document.getElementById("srcs").innerHTML = feeds.map(f =>
     '<div><input type="checkbox" id="s_' + f.id + '" data-f="' + f.id + '"' + (f.on ? " checked" : "") + '>' +
-    '<label for="s_' + f.id + '">' + esc(f.name) + '</label></div>').join("");
+    '<label for="s_' + f.id + '" title="' + esc(f.url) + '">' + esc(f.name) + '</label>' +
+    (f.mine ? '<button class="kill" data-kill="' + f.id + '" title="Retirer cette source">×</button>' : '') +
+    '</div>').join("");
+}
+document.getElementById("settings").addEventListener("click", () => {
+  drawSrcs();
   dlg.showModal();
+});
+
+document.getElementById("addFeed").addEventListener("click", () => {
+  const inp = document.getElementById("newFeed");
+  const url = inp.value.trim();
+  if(!/^https?:\/\//i.test(url)){ toast("Il faut une adresse commençant par http"); return; }
+  if(feeds.some(f => f.url === url)){ toast("Cette source est déjà là"); return; }
+  const f = {id: "u" + Date.now(), name: feedName(url), url, on: true, mine: true};
+  feeds.push(f);
+  const c = store.get("v24.custom", []);
+  c.push({id: f.id, name: f.name, url: f.url, on: true, mine: true});
+  store.set("v24.custom", c);
+  inp.value = "";
+  drawSrcs();
+  toast("Source ajoutée");
+});
+document.getElementById("newFeed").addEventListener("keydown", e => {
+  if(e.key === "Enter"){ e.preventDefault(); document.getElementById("addFeed").click(); }
+});
+document.getElementById("srcs").addEventListener("click", e => {
+  const b = e.target.closest("button[data-kill]"); if(!b) return;
+  const id = b.dataset.kill;
+  const i = feeds.findIndex(f => f.id === id);
+  if(i >= 0) feeds.splice(i, 1);
+  store.set("v24.custom", store.get("v24.custom", []).filter(f => f.id !== id));
+  drawSrcs();
 });
 document.getElementById("dlgClose").addEventListener("click", () => dlg.close());
 document.getElementById("dlgSave").addEventListener("click", () => {
