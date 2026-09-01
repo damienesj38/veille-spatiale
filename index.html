@@ -86,6 +86,26 @@ h1 em{font-style:italic;color:var(--glow);font-weight:400}
 .slide .pu{margin:0;padding-left:17px;font-size:13.5px;color:var(--dim)}
 .slide .pu li{margin-bottom:3px}
 .slide .vis{margin-top:6px;font-size:12px;color:var(--faint);font-style:italic}
+.seg{display:flex;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.seg button{padding:6px 13px;font-size:13px;color:var(--dim);border-right:1px solid var(--line)}
+.seg button:last-child{border-right:none}
+.seg button[aria-pressed="true"]{background:var(--panel2);color:var(--text)}
+.eh{display:flex;align-items:center;gap:9px;margin:24px 0 14px}
+.eh h2{font-family:var(--serif);font-size:19px;font-weight:600;margin:0;flex:1}
+.eh .btn{padding:5px 10px;font-size:12px}
+.ev{display:grid;grid-template-columns:58px 1fr;gap:0 14px;padding:15px 0;border-top:1px solid var(--line)}
+.eyr{font-family:var(--serif);font-size:21px;color:var(--glow);line-height:1.1}
+.et{font-family:var(--serif);font-size:18px;font-weight:600;line-height:1.3}
+.eago{font-size:12px;color:var(--faint);margin-bottom:5px}
+.ed{margin:0;color:var(--dim);font-size:14px;max-width:62ch}
+.theme{border-top:1px solid var(--line);padding-top:6px;margin-top:26px}
+.hintline{font-size:12px;color:var(--faint);margin:7px 0 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-top:16px}
+.im{margin:0;border:1px solid var(--line);border-radius:3px;overflow:hidden;background:var(--panel)}
+.im img{width:100%;height:150px;object-fit:cover;display:block;background:var(--panel2)}
+.im figcaption{padding:9px 10px}
+.imt{font-size:13px;line-height:1.3;margin-bottom:4px}
+.imc{font-size:11.5px;color:var(--amber);line-height:1.35}
 .cit{border:1px solid var(--line);border-radius:3px;padding:10px 12px;margin-bottom:8px;background:var(--panel2)}
 .ct2{font-family:var(--serif);font-size:15.5px;line-height:1.3;margin-bottom:3px}
 .cm{font-size:11.5px;color:var(--faint)}
@@ -151,6 +171,7 @@ input[type=checkbox]{accent-color:#4c8fb5;width:13px;height:13px}
   <div class="hd2">
     <button class="btn" id="refresh">Actualiser</button>
     <button class="btn key" id="translate">Traduire les titres</button>
+    <div class="seg"><button id="navNews" aria-pressed="true">24 h</button><button id="navArch">Archives</button></div>
     <button class="btn" id="carnetBtn">Carnet<span id="carnetCount"></span></button>
     <button class="btn" id="settings">Sources</button>
     <span class="solar" id="solar"></span>
@@ -158,8 +179,11 @@ input[type=checkbox]{accent-color:#4c8fb5;width:13px;height:13px}
 </header>
 
 <div class="wrap">
-  <section id="top" hidden></section>
-  <div id="list"><p class="empty">Chargement…</p></div>
+  <div id="viewNews">
+    <section id="top" hidden></section>
+    <div id="list"><p class="empty">Chargement…</p></div>
+  </div>
+  <div id="viewArch" hidden></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -1065,6 +1089,315 @@ document.getElementById("dlgSave").addEventListener("click", () => {
   dlg.close();
   load();
 });
+
+/* =========== ARCHIVES : ephemeride + recherche d'images =========== */
+
+// Format : MMJJ | annee | titre | description | slug Wikipedia francais
+// Les dates doivent etre confirmees sur la page liee avant publication.
+const EVENTS = [
+"0101|1801|Decouverte de Ceres|Giuseppe Piazzi repere le premier asteroide connu, d'abord pris pour une planete.|Ceres_(planete_naine)",
+"0127|1967|Incendie d'Apollo 1|Trois astronautes perissent dans la capsule lors d'un essai au sol.|Apollo_1",
+"0128|1986|Challenger|La navette se desintegre 73 secondes apres le decollage.|Accident_de_la_navette_spatiale_Challenger",
+"0131|1958|Explorer 1|Premier satellite americain, il decouvre les ceintures de Van Allen.|Explorer_1",
+"0201|2003|Columbia|La navette se disloque lors de sa rentree atmospherique.|Accident_de_la_navette_spatiale_Columbia",
+"0203|1966|Luna 9|Premier atterrissage en douceur sur la Lune et premieres images du sol.|Luna_9",
+"0206|2018|Premier vol de Falcon Heavy|Le lanceur emporte une voiture en orbite et pose deux boosters.|Falcon_Heavy",
+"0214|1990|Le Point bleu pale|Voyager 1 se retourne et photographie la Terre depuis 6 milliards de kilometres.|Pale_Blue_Dot",
+"0218|1930|Decouverte de Pluton|Clyde Tombaugh identifie l'objet sur des plaques photographiques.|Pluton_(planete_naine)",
+"0218|2021|Perseverance sur Mars|Le rover se pose dans le cratere Jezero avec l'helicoptere Ingenuity.|Perseverance_(rover)",
+"0220|1962|Premier Americain en orbite|John Glenn effectue trois revolutions a bord de Friendship 7.|Mercury-Atlas_6",
+"0222|2017|Le systeme TRAPPIST-1|Annonce de sept planetes telluriques autour d'une naine rouge.|TRAPPIST-1",
+"0222|2024|Premier alunissage prive|L'atterrisseur Odysseus d'Intuitive Machines se pose pres du pole sud lunaire.|IM-1",
+"0302|2004|Lancement de Rosetta|Debut d'un voyage de dix ans vers la comete Tchourioumov-Guerassimenko.|Rosetta_(sonde_spatiale)",
+"0313|1781|Decouverte d'Uranus|William Herschel double la taille connue du Systeme solaire.|Uranus_(planete)",
+"0316|1926|Premiere fusee a ergols liquides|Robert Goddard fait voler son engin pendant deux secondes et demie.|Robert_Goddard",
+"0318|1965|Premiere sortie dans l'espace|Alexei Leonov flotte douze minutes hors de Voskhod 2.|Voskhod_2",
+"0410|2019|Premiere image d'un trou noir|L'Event Horizon Telescope devoile l'ombre du trou noir de M87.|Messier_87",
+"0412|1961|Gagarine, premier homme dans l'espace|Un tour de la Terre en 108 minutes a bord de Vostok 1.|Vostok_1",
+"0412|1981|Premier vol de navette|Columbia inaugure les vols habites reutilisables.|STS-1",
+"0419|1971|Saliout 1|Mise en orbite de la premiere station spatiale de l'histoire.|Saliout_1",
+"0419|2021|Premier vol motorise sur Mars|L'helicoptere Ingenuity decolle dans une atmosphere cent fois plus tenue.|Ingenuity",
+"0420|2023|Premier vol integre de Starship|Le plus grand lanceur jamais construit quitte le pas de tir puis explose.|Starship",
+"0424|1990|Lancement de Hubble|La navette Discovery emporte le telescope qui va transformer l'astronomie.|Telescope_spatial_Hubble",
+"0505|1961|Premier Americain dans l'espace|Alan Shepard effectue un vol suborbital de quinze minutes.|Mercury-Redstone_3",
+"0512|2022|Le trou noir de notre galaxie|Premiere image de Sagittarius A*, au centre de la Voie lactee.|Sagittarius_A*",
+"0525|1961|Objectif Lune|Kennedy fixe au Congres l'objectif d'un homme sur la Lune avant la fin de la decennie.|Programme_Apollo",
+"0530|2020|Retour du vol habite americain|Crew Dragon emmene deux astronautes vers l'ISS depuis le sol americain.|Crew_Dragon_Demo-2",
+"0531|1975|Naissance de l'ESA|L'Agence spatiale europeenne succede a deux organisations plus anciennes.|Agence_spatiale_europeenne",
+"0608|2004|Transit de Venus|Venus passe devant le Soleil, un phenomene qui ne reviendra pas avant 2117.|Transit_de_Venus",
+"0613|2010|Retour de Hayabusa|La sonde rapporte les premiers grains d'un asteroide.|Hayabusa",
+"0616|1963|Premiere femme dans l'espace|Valentina Terechkova passe pres de trois jours en orbite.|Valentina_Terechkova",
+"0618|1983|Premiere Americaine dans l'espace|Sally Ride vole a bord de la navette Challenger.|Sally_Ride",
+"0630|1908|L'evenement de la Toungouska|Une explosion aerienne rase 2 000 kilometres carres de foret siberienne.|Evenement_de_la_Toungouska",
+"0704|1997|Mars Pathfinder|Le premier rover martien, Sojourner, roule dans Ares Vallis.|Mars_Pathfinder",
+"0711|2022|Premiere image de Webb|La Maison-Blanche devoile le champ profond du telescope James Webb.|Telescope_spatial_James_Webb",
+"0714|2015|Survol de Pluton|New Horizons revele un monde geologiquement actif.|New_Horizons",
+"0716|1969|Decollage d'Apollo 11|La Saturn V quitte le pas de tir 39A pour la Lune.|Apollo_11",
+"0717|1975|Poignee de main en orbite|Apollo et Soyouz s'amarrent, premiere cooperation spatiale entre les deux blocs.|Apollo-Soyouz",
+"0720|1969|Alunissage d'Apollo 11|Le module Eagle se pose dans la mer de la Tranquillite.|Apollo_11",
+"0720|1976|Viking 1 sur Mars|Premier atterrissage americain reussi sur la planete rouge.|Viking_1",
+"0721|1969|Premiers pas sur la Lune|Armstrong descend l'echelle, il est 03h56 en France.|Apollo_11",
+"0723|1999|Lancement de Chandra|L'observatoire a rayons X ouvre une nouvelle fenetre sur l'univers.|Chandra_(telescope_spatial)",
+"0724|1969|Retour d'Apollo 11|Amerrissage dans le Pacifique apres huit jours de mission.|Apollo_11",
+"0730|2020|Lancement de Perseverance|Le rover part vers Mars avec une mission de collecte d'echantillons.|Perseverance_(rover)",
+"0805|2011|Lancement de Juno|La sonde part etudier l'interieur de Jupiter.|Juno_(sonde_spatiale)",
+"0806|2012|Curiosity sur Mars|La manoeuvre de la grue volante depose le rover dans le cratere Gale.|Curiosity_(rover)",
+"0806|2014|Rosetta rejoint sa comete|Premiere mise en orbite autour d'un noyau cometaire.|Rosetta_(sonde_spatiale)",
+"0820|1977|Lancement de Voyager 2|La seule sonde a avoir survole les quatre planetes geantes.|Voyager_2",
+"0824|2016|Proxima b|Annonce d'une planete potentiellement temperee autour de l'etoile la plus proche.|Proxima_Centauri_b",
+"0905|1977|Lancement de Voyager 1|La sonde emporte le disque d'or destine a d'eventuels extraterrestres.|Voyager_1",
+"0912|1962|Nous choisissons d'aller sur la Lune|Discours de Kennedy a l'universite Rice.|Discours_Nous_choisissons_d'aller_sur_la_Lune",
+"0914|2015|Premieres ondes gravitationnelles|LIGO detecte la fusion de deux trous noirs, annoncee en fevrier 2016.|GW150914",
+"0915|2017|Fin de Cassini|La sonde plonge volontairement dans l'atmosphere de Saturne.|Cassini-Huygens",
+"0923|1846|Decouverte de Neptune|La planete est trouvee la ou le calcul de Le Verrier la placait.|Neptune_(planete)",
+"0924|2023|Les echantillons de Bennu|OSIRIS-REx largue sa capsule au-dessus du desert de l'Utah.|OSIRIS-REx",
+"0926|2022|La Terre devie un asteroide|La sonde DART percute Dimorphos et modifie son orbite.|Double_Asteroid_Redirection_Test",
+"1001|1958|Creation de la NASA|L'agence civile americaine entre officiellement en fonction.|NASA",
+"1004|1957|Spoutnik 1|Le premier satellite artificiel ouvre l'ere spatiale.|Spoutnik_1",
+"1011|1968|Apollo 7|Premier vol habite du programme apres l'incendie d'Apollo 1.|Apollo_7",
+"1013|2024|Un booster rattrape par sa tour|Les bras du pas de tir saisissent l'etage de Starship au retour.|Starship",
+"1014|1947|Le mur du son|Chuck Yeager depasse Mach 1 a bord du Bell X-1.|Chuck_Yeager",
+"1019|2017|Oumuamua|Decouverte du premier objet interstellaire traversant le Systeme solaire.|Oumuamua",
+"1103|1957|Laika|Le premier etre vivant mis en orbite ne survit pas au vol.|Laika",
+"1109|1967|Premier vol de la Saturn V|Le lanceur lunaire vole sans equipage pour Apollo 4.|Apollo_4",
+"1112|2014|Philae sur une comete|Premier atterrissage sur un noyau cometaire, avec des rebonds imprevus.|Philae_(atterrisseur)",
+"1114|1969|Decollage d'Apollo 12|La fusee est frappee deux fois par la foudre au lancement.|Apollo_12",
+"1116|2022|Lancement d'Artemis I|Le premier vol du SLS envoie Orion autour de la Lune.|Artemis_I",
+"1120|1998|Premier module de l'ISS|Zarya est mis en orbite, la Station commence a exister.|Station_spatiale_internationale",
+"1126|2011|Lancement de Curiosity|Le rover part pour un voyage de huit mois vers Mars.|Curiosity_(rover)",
+"1126|2018|InSight sur Mars|L'atterrisseur va ausculter l'interieur de la planete.|InSight",
+"1202|1971|Mars 3|Premier atterrissage reussi sur Mars, le contact est perdu en vingt secondes.|Mars_3",
+"1206|2020|Les grains de Ryugu|La capsule de Hayabusa2 se pose en Australie.|Hayabusa2",
+"1207|1972|Decollage d'Apollo 17|Derniere mission lunaire habitee, seul lancement de nuit du programme.|Apollo_17",
+"1207|1995|Galileo arrive a Jupiter|La sonde largue une sonde atmospherique dans la geante gazeuse.|Galileo_(sonde_spatiale)",
+"1211|1972|Dernier alunissage|Cernan et Schmitt se posent dans la vallee de Taurus-Littrow.|Apollo_17",
+"1214|1972|Dernier depart de la Lune|Personne n'y est retourne depuis.|Apollo_17",
+"1221|1968|Apollo 8 part vers la Lune|Premier equipage a quitter l'orbite terrestre.|Apollo_8",
+"1224|1968|Le lever de Terre|Anders photographie la Terre au-dessus de l'horizon lunaire.|Lever_de_Terre",
+"1225|2021|Lancement de Webb|Une Ariane 5 envoie le telescope vers le point de Lagrange L2.|Telescope_spatial_James_Webb"
+];
+
+let archDate = new Date();
+let archTheme = "";
+let archImgs = [];
+let archBusy = false;
+
+function key2(d){
+  return String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0");
+}
+function eventsOn(d){
+  const k = key2(d);
+  return EVENTS.filter(e => e.startsWith(k + "|")).map(e => {
+    const p = e.split("|");
+    return {mmjj: p[0], an: parseInt(p[1], 10), titre: p[2], desc: p[3], wiki: p[4]};
+  }).sort((a, b) => a.an - b.an);
+}
+
+/* ---- recherche d'images, avec la licence ---- */
+async function searchImages(q){
+  archBusy = true; archImgs = []; renderArch();
+  const found = [];
+
+  // 1. bibliotheque d'images de la NASA
+  try{
+    const r = JSON.parse(await getText(
+      "https://images-api.nasa.gov/search?media_type=image&q=" + encodeURIComponent(q)));
+    (r.collection.items || []).slice(0, 12).forEach(it => {
+      const d = (it.data || [])[0] || {};
+      const thumb = (it.links || [])[0];
+      if(!thumb || !thumb.href) return;
+      const who = d.photographer || d.secondary_creator || "";
+      found.push({
+        src: thumb.href,
+        titre: d.title || "",
+        desc: (d.description || "").slice(0, 300),
+        date: (d.date_created || "").slice(0, 10),
+        credit: who ? "NASA / " + who : "NASA",
+        licence: "Domaine public, citation de la NASA demandee",
+        page: "https://images.nasa.gov/details/" + (d.nasa_id || ""),
+        maison: "NASA"
+      });
+    });
+  }catch(e){ /* on continue avec Commons */ }
+
+  // 2. Wikimedia Commons, qui expose la licence de chaque fichier
+  try{
+    const u = "https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*" +
+      "&generator=search&gsrnamespace=6&gsrlimit=14&gsrsearch=" + encodeURIComponent(q) +
+      "&prop=imageinfo&iiprop=url%7Cextmetadata&iiurlwidth=640";
+    const r = JSON.parse(await getText(u));
+    const pages = (r.query && r.query.pages) || {};
+    Object.values(pages).forEach(pg => {
+      const ii = (pg.imageinfo || [])[0];
+      if(!ii) return;
+      const m = ii.extmetadata || {};
+      const val = k => (m[k] && m[k].value ? strip(m[k].value) : "");
+      const lic = val("LicenseShortName");
+      if(/fair use|non-free/i.test(lic)) return;
+      found.push({
+        src: ii.thumburl || ii.url,
+        titre: (pg.title || "").replace(/^File:/, ""),
+        desc: val("ImageDescription").slice(0, 300),
+        date: val("DateTimeOriginal").slice(0, 10),
+        credit: val("Artist") || val("Credit") || "auteur non precise",
+        licence: lic || "licence non precisee",
+        page: "https://commons.wikimedia.org/wiki/" + encodeURIComponent(pg.title || ""),
+        maison: "Commons"
+      });
+    });
+  }catch(e){ /* rien */ }
+
+  archImgs = found;
+  archBusy = false;
+  renderArch();
+  if(!found.length) toast("Aucune image trouvee pour cette recherche");
+}
+
+function creditLine(im){
+  return im.maison === "NASA"
+    ? "Credit : " + im.credit
+    : "Credit : " + im.credit + " (" + im.licence + ")";
+}
+
+/* ---- affichage ---- */
+function renderArch(){
+  const box = document.getElementById("viewArch");
+  const evs = eventsOn(archDate);
+  const now = new Date();
+  const jour = archDate.toLocaleDateString("fr-FR", {day:"numeric", month:"long"});
+
+  let s = '<div class="ephem"><div class="eh">' +
+    '<button class="btn" id="dayPrev">jour precedent</button>' +
+    '<h2>' + esc(jour) + '</h2>' +
+    '<button class="btn" id="dayNext">jour suivant</button>' +
+    '<button class="btn" id="dayToday">aujourd\'hui</button></div>';
+
+  if(!evs.length){
+    s += '<p class="cempty">Rien de repertorie a cette date. Essaie un autre jour, ' +
+      'ou passe par la recherche par theme juste en dessous.</p>';
+  }else{
+    s += evs.map(e => {
+      const ans = now.getFullYear() - e.an;
+      return '<div class="ev"><div class="eyr">' + e.an + '</div><div>' +
+        '<div class="et">' + esc(e.titre) + '</div>' +
+        '<div class="eago">il y a ' + ans + ' ans</div>' +
+        '<p class="ed">' + esc(e.desc) + '</p>' +
+        '<div class="cb">' +
+          '<a href="https://fr.wikipedia.org/wiki/' + esc(e.wiki) + '" target="_blank" rel="noopener">verifier sur Wikipedia</a>' +
+          '<button data-imgs="' + esc(e.titre) + '">chercher des images</button>' +
+          '<button data-carou="' + esc(e.an + "|" + e.titre + "|" + e.desc) + '">generer le carrousel</button>' +
+        '</div></div></div>';
+    }).join("");
+  }
+  s += '</div>';
+
+  s += '<div class="theme"><div class="eh"><h2>Recherche par theme</h2></div>' +
+    '<div class="addbox"><input id="thq" placeholder="nebuleuse, astronaute entrainement, rover martien..." ' +
+    'value="' + esc(archTheme) + '" autocomplete="off">' +
+    '<button class="btn" id="thGo">Chercher</button></div>' +
+    '<p class="hintline">Sources interrogees : bibliotheque d\'images de la NASA et Wikimedia Commons. ' +
+    'La licence de chaque image est affichee, verifie la avant publication.</p>';
+
+  if(archBusy) s += '<p class="cempty">Recherche en cours…</p>';
+  else if(archImgs.length){
+    s += '<div class="grid">' + archImgs.map((im, i) =>
+      '<figure class="im"><img src="' + esc(im.src) + '" alt="" loading="lazy" onerror="this.closest(\'figure\').remove()">' +
+      '<figcaption><div class="imt">' + esc(im.titre) + '</div>' +
+      '<div class="imc">' + esc(creditLine(im)) + '</div>' +
+      '<div class="cb"><a href="' + esc(im.page) + '" target="_blank" rel="noopener">fiche source</a>' +
+      '<button data-cred="' + i + '">copier le credit</button></div>' +
+      '</figcaption></figure>').join("") + '</div>';
+  }
+  s += '</div>';
+
+  box.innerHTML = s;
+}
+
+async function archCarousel(payload){
+  if(!hasAI()){ toast("Fonction disponible une fois la page en ligne"); return; }
+  const p = payload.split("|");
+  toast("Redaction en cours…");
+  try{
+    const out = await ask(
+      STYLE + " Tu reponds uniquement par du JSON, sans texte autour.",
+      "Redige un carrousel Instagram commemoratif.\n\n" +
+      "EVENEMENT : " + p[1] + "\nANNEE : " + p[0] + "\nRESUME : " + p[2] + "\n" +
+      "ANNIVERSAIRE : " + (new Date().getFullYear() - parseInt(p[0], 10)) + " ans\n\n" +
+      "Tu ne disposes que de ces elements. Tu peux mobiliser le contexte historique general " +
+      "de cet evenement, mais tu signales dans a_verifier tout chiffre, date precise ou nom " +
+      "que tu avances et qui ne figure pas dans le resume ci-dessus. Sois exhaustif sur ce point : " +
+      "c'est un contenu commemoratif, une erreur de date serait immediatement reperee.\n\n" +
+      "FORMAT\nUne couverture, puis 3 ou 4 slides de contenu.\n" +
+      "Couverture : titre de 1 a 3 mots en capitales, sous-titre de 3 a 6 mots.\n" +
+      "Chaque slide : titre court en capitales, 5 mots maximum. " +
+      "Type texte pour un paragraphe de 70 a 110 mots, type liste pour ce qui s'enumere.\n" +
+      "surligner : 2 a 4 expressions exactes du texte du slide.\n" +
+      "visuel : l'image a chercher pour ce slide.\n" +
+      "legende : 3 a 5 phrases. Ne cite aucune source que tu n'as pas.\n" +
+      "hashtags : 8 hashtags.\n\n" +
+      "JSON : {\"titre\":\"\",\"sous_titre\":\"\"," +
+      "\"slides\":[{\"titre\":\"\",\"type\":\"texte\",\"texte\":\"\",\"puces\":[],\"surligner\":[\"\"],\"visuel\":\"\"}]," +
+      "\"legende\":\"\",\"a_verifier\":[\"\"],\"hashtags\":\"\"}",
+      3000
+    );
+    const sl = parseJson(out);
+    const item = {
+      key: "ev-" + p[0] + "-" + p[1],
+      title: p[1] + " (" + p[0] + ")",
+      fr: p[1] + ", il y a " + (new Date().getFullYear() - parseInt(p[0], 10)) + " ans",
+      link: "https://fr.wikipedia.org/wiki/Special:Search?search=" + encodeURIComponent(p[1]),
+      src: "Ephemeride", t: Date.now(), excerpt: p[2], img: "",
+      author: "", social: false, slides: sl, saved: Date.now()
+    };
+    sl._note = "ephemeride, aucun article source";
+    if(!inCarnet(item.key)){ carnet.unshift(item); store.set("v24.carnet", carnet); drawCarnetBtn(); }
+    toast("Carrousel ajoute au carnet");
+    drawCarnet();
+    document.getElementById("carnetDlg").showModal();
+  }catch(e){
+    toast("Echec : " + e.message);
+  }
+}
+
+/* ---- evenements ---- */
+document.getElementById("viewArch").addEventListener("click", e => {
+  const t = e.target;
+  if(t.id === "dayPrev"){ archDate.setDate(archDate.getDate() - 1); renderArch(); return; }
+  if(t.id === "dayNext"){ archDate.setDate(archDate.getDate() + 1); renderArch(); return; }
+  if(t.id === "dayToday"){ archDate = new Date(); renderArch(); return; }
+  if(t.id === "thGo"){
+    const v = document.getElementById("thq").value.trim();
+    if(v){ archTheme = v; searchImages(v); }
+    return;
+  }
+  const bi = t.closest("button[data-imgs]");
+  if(bi){ archTheme = bi.dataset.imgs; searchImages(bi.dataset.imgs); return; }
+  const bc = t.closest("button[data-carou]");
+  if(bc){ archCarousel(bc.dataset.carou); return; }
+  const cr = t.closest("button[data-cred]");
+  if(cr){
+    const im = archImgs[parseInt(cr.dataset.cred, 10)];
+    navigator.clipboard.writeText(creditLine(im) + " — " + im.page).then(() => toast("Credit copie"));
+  }
+});
+document.getElementById("viewArch").addEventListener("keydown", e => {
+  if(e.key === "Enter" && e.target.id === "thq"){
+    e.preventDefault();
+    const v = e.target.value.trim();
+    if(v){ archTheme = v; searchImages(v); }
+  }
+});
+
+function setView(v){
+  const news = v === "news";
+  document.getElementById("viewNews").hidden = !news;
+  document.getElementById("viewArch").hidden = news;
+  document.getElementById("navNews").setAttribute("aria-pressed", news);
+  document.getElementById("navArch").setAttribute("aria-pressed", !news);
+  if(!news) renderArch();
+}
+document.getElementById("navNews").addEventListener("click", () => setView("news"));
+document.getElementById("navArch").addEventListener("click", () => setView("arch"));
 
 /* ---------- démarrage ---------- */
 drawCarnetBtn();
