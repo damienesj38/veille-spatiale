@@ -78,6 +78,15 @@ h1 em{font-style:italic;color:var(--glow);font-weight:400}
 .slide .n{font-size:11px;color:var(--faint);margin-bottom:3px}
 .slide .t{font-family:var(--serif);font-size:16px;font-weight:600;margin-bottom:4px}
 .slide .x{font-size:13.5px;color:var(--dim)}
+.slide.cover{background:#101822;border-color:#33455c;text-align:center;padding:16px 13px}
+.slide .ct{font-family:var(--serif);font-size:23px;font-weight:600;letter-spacing:.02em;color:var(--amber)}
+.slide .cs{font-family:var(--serif);font-size:16px;letter-spacing:.02em;color:var(--text)}
+.slide .t{letter-spacing:.02em}
+.slide mark{background:none;color:var(--amber);font-weight:500}
+.slide .pu{margin:0;padding-left:17px;font-size:13.5px;color:var(--dim)}
+.slide .pu li{margin-bottom:3px}
+.slide .vis{margin-top:6px;font-size:12px;color:var(--faint);font-style:italic}
+.note{font-size:12px;color:var(--faint);margin-bottom:2px}
 .check{border:1px solid #5c4a1e;background:#1d1810;border-radius:3px;padding:11px 13px;font-size:13px;color:var(--dim)}
 .check b{color:var(--amber);display:block;margin-bottom:5px;font-weight:500}
 .check ul{margin:0;padding-left:18px}
@@ -486,6 +495,20 @@ function render(){
   }).join("");
 }
 
+// applique la couleur sur les expressions retenues par le modèle
+function mark(txt, terms){
+  let out = esc(txt || "");
+  if(Array.isArray(terms)){
+    terms.slice(0, 5).forEach(t => {
+      if(!t || t.length < 3) return;
+      const e = esc(t);
+      const i = out.indexOf(e);
+      if(i >= 0) out = out.slice(0, i) + '<mark>' + e + '</mark>' + out.slice(i + e.length);
+    });
+  }
+  return out;
+}
+
 function detailHtml(x){
   let s = '<div class="detail">';
   if(x.img) s += '<img src="' + esc(x.img) + '" alt="" loading="lazy" onerror="this.remove()">';
@@ -497,16 +520,28 @@ function detailHtml(x){
   if(x.excerpt) s += '<div class="lbl">Extrait du flux</div><p>' + esc(x.excerpt) + '</p>';
   s += '<div class="row">' +
     '<button class="btn key" data-act="slides"' + (x.working ? " disabled" : "") + '>' +
-      (x.working ? "Rédaction…" : x.slides ? "Régénérer le carrousel" : "Générer le carrousel") + '</button>' +
+      (x.working ? (x.step || "…") : x.slides ? "Régénérer le carrousel" : "Générer le carrousel") + '</button>' +
     '<button class="btn" data-act="copylink">Copier le lien</button>' +
   '</div>';
 
   if(x.slides){
     s += '<div class="slides">';
-    x.slides.slides.forEach((sl, i) => {
-      s += '<div class="slide"><div class="n">Slide ' + (i+1) + '</div>' +
-        '<div class="t">' + esc(sl.titre) + '</div>' +
-        '<div class="x">' + esc(sl.texte) + '</div></div>';
+    if(x.slides._note) s += '<div class="note">Rédigé sur : ' + esc(x.slides._note) + '</div>';
+    if(x.slides.titre){
+      s += '<div class="slide cover"><div class="n">Couverture</div>' +
+        '<div class="ct">' + esc(x.slides.titre) + '</div>' +
+        '<div class="cs">' + esc(x.slides.sous_titre || "") + '</div></div>';
+    }
+    (x.slides.slides || []).forEach((sl, i) => {
+      s += '<div class="slide"><div class="n">Slide ' + (i + 2) + '</div>' +
+        '<div class="t">' + esc(sl.titre) + '</div>';
+      if(sl.type === "liste" && Array.isArray(sl.puces) && sl.puces.length){
+        s += '<ul class="pu">' + sl.puces.map(p => '<li>' + mark(p, sl.surligner) + '</li>').join("") + '</ul>';
+      }else{
+        s += '<div class="x">' + mark(sl.texte || "", sl.surligner) + '</div>';
+      }
+      if(sl.visuel) s += '<div class="vis">Visuel : ' + esc(sl.visuel) + '</div>';
+      s += '</div>';
     });
     if(x.slides.legende) s += '<div class="cap"><b>Légende</b>\n' + esc(x.slides.legende) +
       (x.slides.hashtags ? "\n\n" + esc(x.slides.hashtags) : "") + '</div>';
@@ -597,56 +632,103 @@ async function translateAll(){
   }
 }
 
+async function fetchArticle(x){
+  if(x.social) return {ok:false, why:"message de réseau social, pas d'article à récupérer"};
+  try{
+    const r = await fetch("/api/article?url=" + encodeURIComponent(x.link));
+    return await r.json();
+  }catch(e){ return {ok:false, why:e.message}; }
+}
+
 async function makeSlides(x){
   if(!hasAI()){ toast("Mets la page en ligne pour activer les carrousels"); return; }
-  x.working = true; render();
+  x.working = true; x.step = "Lecture de l'article…"; render();
   try{
-    const credit = x.author ? x.author + " pour " + x.src : x.src;
+    const art = await fetchArticle(x);
+    const corps = art.ok ? art.text : x.excerpt;
+    x.source_note = art.ok
+      ? "article complet, " + art.chars + " signes"
+      : "extrait du flux seulement (" + art.why + ")";
+    if(art.ok && art.image && !x.img) x.img = art.image;
+    const credit = (art.ok && art.author ? art.author : x.author)
+      ? ((art.ok && art.author ? art.author : x.author) + " pour " + x.src)
+      : x.src;
+
+    x.step = "Rédaction…"; render();
+
     const out = await ask(
       STYLE + " Tu réponds uniquement par du JSON, sans texte autour.",
-      "Rédige un carrousel Instagram de 6 slides à partir de cette actualité.\n\n" +
-      "Titre : " + x.title + "\n" +
-      "Signature : " + credit + "\n" +
-      "Lien : " + x.link + "\n" +
-      (x.social ? "NATURE DE LA SOURCE : message publié sur un réseau social, pas un article de presse. " +
-        "Traite l'information comme une indication à confirmer et dis le dans la légende.\n" : "") +
-      "Extrait disponible : " + x.excerpt + "\n\n" +
-      "Structure imposée : slide 1 accroche qui donne envie de faire défiler, " +
-      "slide 2 le contexte en une idée, slide 3 le fait précis, " +
-      "slide 4 pourquoi cela compte, slide 5 le détail ou le chiffre marquant, " +
-      "slide 6 ce qu'il faut retenir plus une invitation à commenter.\n" +
-      "Chaque slide : un titre de 5 mots maximum et un texte de 25 à 40 mots.\n\n" +
-      "L'extrait ci-dessus est court. S'il ne suffit pas pour un slide, écris dans le texte de ce slide " +
-      "ce qui manque et où le chercher, au lieu de meubler.\n\n" +
-      "Trois éléments en plus des slides.\n" +
-      "legende : 3 à 5 phrases, se terminant obligatoirement par le crédit exact " +
-      "de la signature indiquée ci-dessus, suivi du lien.\n" +
-      "a_verifier : la liste des points de ton texte qu'il faut confirmer sur l'article original " +
-      "avant publication, notamment tout chiffre, nom ou date. Sois exhaustif et sévère avec toi-même. " +
-      "S'il n'y a rien à vérifier, mets une liste vide.\n" +
-      "hashtags : 8 hashtags français et anglais pertinents.\n\n" +
-      "Format JSON : {\"slides\":[{\"titre\":\"\",\"texte\":\"\"}],\"legende\":\"\"," +
-      "\"a_verifier\":[\"\"],\"hashtags\":\"\"}",
-      2200
+      "Rédige un carrousel Instagram à partir de cet article.\n\n" +
+      "SIGNATURE À CRÉDITER : " + credit + "\n" +
+      "LIEN : " + x.link + "\n" +
+      (art.ok ? "" : "ATTENTION : tu n'as qu'un court extrait, pas l'article entier. " +
+        "Reste très prudent et signale dans a_verifier tout ce qui manque.\n") +
+      (x.social ? "NATURE : message de réseau social, information à confirmer.\n" : "") +
+      "\nTEXTE SOURCE\n" + corps + "\n\nFIN DU TEXTE SOURCE\n\n" +
+      "FORMAT ATTENDU\n" +
+      "Une couverture, puis 3 ou 4 slides de contenu. Quatre si la matière est riche, trois sinon. " +
+      "Ne gonfle jamais pour atteindre quatre.\n\n" +
+      "Couverture : un titre de 1 à 3 mots en capitales, souvent un nom propre ou l'objet central, " +
+      "et un sous-titre de 3 à 6 mots qui crée la tension. Exemple de ton juste : " +
+      "titre SOPHIE ADENOT, sous-titre RETOURNE DANS LE VIDE.\n\n" +
+      "Chaque slide de contenu porte un titre court en capitales, 5 mots maximum, " +
+      "volontiers formulé en question directe.\n" +
+      "Deux mises en forme possibles, à choisir selon le contenu. " +
+      "Le type texte pour un paragraphe de 45 à 70 mots. " +
+      "Le type liste pour ce qui s'énumère naturellement : un déroulé horaire, " +
+      "des chiffres techniques, des façons de suivre l'événement. Trois à cinq puces courtes.\n\n" +
+      "Pour chaque slide, le champ surligner contient 2 à 4 expressions exactes, " +
+      "reprises mot pour mot du texte du slide, qui seront mises en couleur. " +
+      "Choisis les segments porteurs de sens : un chiffre marquant, une première, " +
+      "un enjeu. Jamais un mot isolé sans intérêt, jamais une phrase entière.\n\n" +
+      "visuel : pour chaque slide, une phrase décrivant l'image à chercher.\n" +
+      "legende : 3 à 5 phrases, terminées obligatoirement par le crédit exact " +
+      "de la signature ci-dessus, suivi du lien.\n" +
+      "a_verifier : tous les points à confirmer sur l'article avant publication, " +
+      "chiffres, noms et dates en priorité. Sois sévère avec toi-même. Liste vide si rien.\n" +
+      "hashtags : 8 hashtags français et anglais.\n\n" +
+      "JSON attendu : {\"titre\":\"\",\"sous_titre\":\"\"," +
+      "\"slides\":[{\"titre\":\"\",\"type\":\"texte\",\"texte\":\"\",\"puces\":[]," +
+      "\"surligner\":[\"\"],\"visuel\":\"\"}]," +
+      "\"legende\":\"\",\"a_verifier\":[\"\"],\"hashtags\":\"\"}",
+      3000
     );
     x.slides = parseJson(out);
+    x.slides._note = x.source_note;
     cacheSave(x);
-    toast("Carrousel prêt");
+    toast(art.ok ? "Carrousel prêt, écrit sur l'article complet" : "Carrousel prêt, sur extrait seulement");
   }catch(e){
     toast("Échec : " + e.message);
   }finally{
-    x.working = false; render();
+    x.working = false; x.step = null; render();
   }
 }
 
 function slidesText(x){
-  let s = (x.fr || x.title) + "\n" +
-    (x.author ? x.author + " pour " + x.src : x.src) + " · " +
-    new Date(x.t).toLocaleString("fr-FR") + "\n" + x.link + "\n" +
-    (x.social ? "Source : message de réseau social, information à confirmer\n" : "") + "\n";
-  x.slides.slides.forEach((sl, i) => {
-    s += "SLIDE " + (i+1) + " · " + sl.titre + "\n" + sl.texte + "\n\n";
+  const cr = x.author ? x.author + " pour " + x.src : x.src;
+  let s = (x.fr || x.title) + "\n" + cr + " · " +
+    new Date(x.t).toLocaleString("fr-FR") + "\n" + x.link + "\n";
+  if(x.slides._note) s += "Rédigé sur : " + x.slides._note + "\n";
+  if(x.social) s += "Source : message de réseau social, information à confirmer\n";
+  s += "\n";
+
+  if(x.slides.titre){
+    s += "COUVERTURE\n" + x.slides.titre + "\n" + (x.slides.sous_titre || "") + "\n\n";
+  }
+  (x.slides.slides || []).forEach((sl, i) => {
+    s += "SLIDE " + (i + 2) + " · " + sl.titre + "\n";
+    if(sl.type === "liste" && Array.isArray(sl.puces)){
+      sl.puces.forEach(p => { s += "- " + p + "\n"; });
+    }else{
+      s += (sl.texte || "") + "\n";
+    }
+    if(Array.isArray(sl.surligner) && sl.surligner.length){
+      s += "À surligner : " + sl.surligner.join(" | ") + "\n";
+    }
+    if(sl.visuel) s += "Visuel : " + sl.visuel + "\n";
+    s += "\n";
   });
+
   if(x.slides.legende) s += "LÉGENDE\n" + x.slides.legende + "\n\n";
   if(x.slides.hashtags) s += x.slides.hashtags + "\n\n";
   const av = x.slides.a_verifier;
