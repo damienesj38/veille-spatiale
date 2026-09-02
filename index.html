@@ -104,7 +104,7 @@ h1 em{font-style:italic;color:var(--glow);font-weight:400}
 .niv b{font-size:13.5px}
 .niv p{margin:4px 0 0;opacity:.82;font-size:12.5px;max-width:62ch}
 .niv p.q{opacity:1;font-weight:500}
-.tag{display:inline-block;font-size:10.5px;padding:1px 6px;border-radius:2px;letter-spacing:.02em}
+.tag{display:inline-block;font-size:10.5px;padding:1px 6px;border-radius:2px;letter-spacing:.02em;white-space:nowrap}
 .t-ok{background:#16301f;color:var(--ok)}
 .t-warn{background:#3a2c12;color:var(--amber)}
 .t-lu{background:#1c2431;color:var(--faint)}
@@ -144,7 +144,9 @@ h1 em{font-style:italic;color:var(--glow);font-weight:400}
 .cempty{color:var(--faint);font-size:13px;margin:0}
 .legende .lg{margin-bottom:8px;font-size:13px}
 .legende .lg b{margin-left:5px}
-.legende .lg p{margin:2px 0 0;font-size:12px;color:var(--faint);max-width:60ch}
+.legende .lg p{margin:3px 0 0;font-size:12px;color:var(--faint);max-width:62ch;line-height:1.45}
+.legende .lg p.q2{color:var(--dim)}
+.legende .lg b{display:inline-block;margin:3px 0 0 5px}
 #carnetList{max-height:60vh;overflow-y:auto}
 .ok2{border:1px solid #2c5a44;background:#0f1b16;border-radius:3px;padding:11px 13px;font-size:13px;color:var(--dim)}
 .ok2 b{color:var(--ok);font-weight:500}
@@ -305,29 +307,34 @@ const FEEDS=[
 
 const NIVEAUX = {
   primaire: {
-    court:"primaire", nom:"Source primaire",
-    dit:"L'organisme annonce son propre travail. Les faits sont a la source, mais la mise en perspective est promotionnelle : ce qui gene est rarement mis en avant.",
-    quoi:"Fiable sur les faits, a completer par un regard exterieur pour le contexte."
+    court:"de premiere main",
+    nom:"L'organisme annonce lui-meme sa decouverte",
+    dit:"C'est la NASA, l'ESA ou l'observatoire concerne qui parle de son propre travail. Rien ne s'est interpose entre le fait et toi.",
+    quoi:"Les faits sont surs. Mais un organisme qui parle de lui-meme met en avant ce qui l'arrange, alors va chercher le contexte ailleurs."
   },
   redaction: {
-    court:"redaction", nom:"Redaction specialisee",
-    dit:"Des journalistes identifies qui suivent le sujet, recoupent et mettent en perspective.",
-    quoi:"Le meilleur equilibre. Verifie quand meme les chiffres avant publication."
+    court:"journalistes",
+    nom:"Ecrit par des journalistes du domaine",
+    dit:"Une redaction identifiee, qui suit le sujet depuis des annees, qui recoupe et qui remet l'information a sa place.",
+    quoi:"C'est ce qui se fait de mieux. Verifie quand meme les chiffres avant de publier."
   },
   reprise: {
-    court:"reprise", nom:"Reprise et vulgarisation",
-    dit:"Reprend des communiques ou vulgarise sans enquete propre. Le fond vient d'ailleurs, et le titrage est souvent plus enthousiaste que l'etude elle-meme.",
-    quoi:"Remonte a la source d'origine avant de publier un chiffre ou une conclusion."
+    court:"reprise de communique",
+    nom:"Reprend une information publiee ailleurs",
+    dit:"Ce site republie le communique d'une universite ou d'un labo, ou vulgarise une etude, sans enquete de son cote. Le titre est souvent plus enthousiaste que l'etude elle-meme.",
+    quoi:"Remonte a l'etude ou au communique d'origine avant de reprendre un chiffre ou une conclusion."
   },
   social: {
-    court:"social", nom:"Message de reseau",
-    dit:"Publication d'un compte, sans relecture editoriale. Souvent le plus rapide, parfois une reaction a chaud.",
-    quoi:"A confirmer par une autre source avant d'en faire un carrousel."
+    court:"reseau social",
+    nom:"Message poste par un compte",
+    dit:"Une publication sur Bluesky, sans relecture avant mise en ligne. Souvent la premiere a sortir, parfois une reaction a chaud qui sera nuancee ensuite.",
+    quoi:"Cherche une confirmation ailleurs avant d'en faire un carrousel."
   },
   inconnu: {
-    court:"a evaluer", nom:"Source ajoutee par toi",
-    dit:"Source personnelle, je n'ai pas d'avis dessus.",
-    quoi:"A toi de juger."
+    court:"source perso",
+    nom:"Source que tu as ajoutee toi-meme",
+    dit:"Elle ne fait pas partie de ma selection, je n'ai pas d'avis sur son fonctionnement.",
+    quoi:"A toi de juger de sa fiabilite."
   }
 };
 function niveau(x){ return NIVEAUX[x && x.fiab] || NIVEAUX.inconnu; }
@@ -964,8 +971,10 @@ async function makeSlides(x){
       "Le sous-titre apporte une precision reelle tiree de l'article : qui, ou, quand, " +
       "combien, ou l'enjeu concret. Jamais un slogan interchangeable " +
       "comme la technologie du futur ou une revolution en marche.\n" +
-      "Ajoute pour la couverture les memes champs visuel, type_visuel et prompt_ia " +
-      "que pour les slides.\n" +
+      "La couverture a sa propre image, c'est la plus importante du carrousel : " +
+      "c'est elle qui donne envie d'ouvrir. Remplis pour elle les champs visuel, " +
+      "type_visuel et prompt_ia, au meme niveau que titre et sous_titre dans le JSON, " +
+      "et pas a l'interieur du tableau slides.\n" +
       "VERIFICATION : relis le titre source, puis ta couverture. " +
       "Si un lecteur ne pouvait pas deviner le titre source a partir de ta couverture, " +
       "tu t'es trop eloigne, recommence plus pres du texte.\n\n" +
@@ -1026,6 +1035,7 @@ async function makeSlides(x){
       "chiffres, noms et dates en priorite. Sois severe avec toi-meme. Liste vide si rien.\n" +
       "hashtags : 8 hashtags francais et anglais.\n\n" +
       "JSON attendu : {\"titre\":\"\",\"sous_titre\":\"\"," +
+      "\"visuel\":\"\",\"type_visuel\":\"archive\",\"prompt_ia\":\"\"," +
       "\"slides\":[{\"titre\":\"\",\"type\":\"texte\",\"texte\":\"\",\"puces\":[]," +
       "\"surligner\":[\"\"],\"visuel\":\"\",\"nb_images\":1," +
       "\"type_visuel\":\"archive\",\"prompt_ia\":\"\"}]," +
@@ -1119,8 +1129,14 @@ async function verify(x){
 
 function promptsText(x){
   const all = [];
-  if(x.slides.titre && x.slides.prompt_ia && x.slides.type_visuel !== "archive")
-    all.push("COUVERTURE\n" + promptComplet(x.slides));
+  if(x.slides.titre){
+    if(x.slides.type_visuel === "archive")
+      all.push("COUVERTURE\nArchive recommandee : " + (x.slides.visuel || "image d'illustration du sujet"));
+    else if(x.slides.prompt_ia)
+      all.push("COUVERTURE\n" + promptComplet(x.slides));
+    else
+      all.push("COUVERTURE\nAucun prompt fourni, regenere le carrousel.");
+  }
   (x.slides.slides || []).forEach((sl, i) => {
     if(sl.type_visuel === "archive")
       all.push("SLIDE " + (i + 2) + "\nArchive recommandee : " + (sl.visuel || ""));
@@ -1139,7 +1155,11 @@ function slidesText(x){
   s += "\n";
 
   if(x.slides.titre){
-    s += "COUVERTURE\n" + x.slides.titre + "\n" + (x.slides.sous_titre || "") + "\n\n";
+    s += "COUVERTURE\n" + x.slides.titre + "\n" + (x.slides.sous_titre || "") + "\n";
+    if(x.slides.visuel) s += "Image a chercher : " + x.slides.visuel + "\n";
+    if(x.slides.type_visuel === "archive") s += "Archive recommandee, pas d'image generee\n";
+    else if(x.slides.prompt_ia) s += "Prompt IA : " + promptComplet(x.slides) + "\n";
+    s += "\n";
   }
   (x.slides.slides || []).forEach((sl, i) => {
     s += "SLIDE " + (i + 2) + " · " + sl.titre + "\n";
@@ -1288,7 +1308,8 @@ document.getElementById("settings").addEventListener("click", () => {
     b.setAttribute("aria-pressed", b.dataset.len === cur));
   document.getElementById("legende").innerHTML = ["primaire","redaction","reprise","social"]
     .map(k => '<div class="lg"><span class="tag n-' + k + '">' + NIVEAUX[k].court + '</span> ' +
-      '<b>' + esc(NIVEAUX[k].nom) + '</b><p>' + esc(NIVEAUX[k].quoi) + '</p></div>').join("");
+      '<b>' + esc(NIVEAUX[k].nom) + '</b><p>' + esc(NIVEAUX[k].dit) + '</p>' +
+      '<p class="q2">' + esc(NIVEAUX[k].quoi) + '</p></div>').join("");
   document.getElementById("styleia").value = styleIA();
   drawSrcs();
   dlg.showModal();
@@ -1705,6 +1726,7 @@ async function archCarousel(payload){
       "legende : 3 a 5 phrases. Ne cite aucune source que tu n'as pas.\n" +
       "hashtags : 8 hashtags.\n\n" +
       "JSON : {\"titre\":\"\",\"sous_titre\":\"\"," +
+      "\"visuel\":\"\",\"type_visuel\":\"archive\",\"prompt_ia\":\"\"," +
       "\"slides\":[{\"titre\":\"\",\"type\":\"texte\",\"texte\":\"\",\"puces\":[],\"surligner\":[\"\"]," +
       "\"visuel\":\"\",\"type_visuel\":\"archive\",\"prompt_ia\":\"\"}]," +
       "\"legende\":\"\",\"a_verifier\":[\"\"],\"hashtags\":\"\"}",
