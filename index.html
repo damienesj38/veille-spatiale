@@ -85,7 +85,12 @@ h1 em{font-style:italic;color:var(--glow);font-weight:400}
 .slide mark{background:none;color:var(--amber);font-weight:500}
 .slide .pu{margin:0;padding-left:17px;font-size:13.5px;color:var(--dim)}
 .slide .pu li{margin-bottom:3px}
-.slide .vis{margin-top:6px;font-size:12px;color:var(--faint);font-style:italic}
+.slide .vis{margin-top:8px;font-size:12px;color:var(--faint);font-style:italic}
+.vwarn{margin-top:6px;font-size:12px;color:var(--amber);border-left:2px solid #5c4a1e;padding-left:8px}
+.vprompt{margin-top:7px;border:1px solid #2b3a4d;border-radius:3px;background:#0e151f;padding:8px 9px}
+.vph{display:flex;align-items:center;font-size:11px;color:var(--faint);margin-bottom:4px}
+.vph button{margin-left:auto;font-size:11px;color:var(--glow)}
+.vprompt code{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;color:var(--dim);line-height:1.5;display:block;word-break:break-word}
 .item.lu .fr{color:var(--dim);font-weight:400}
 .item.lu .fr.raw{color:var(--faint)}
 .item.lu .excerpt{color:var(--faint)}
@@ -222,6 +227,9 @@ input[type=checkbox]{accent-color:#4c8fb5;width:13px;height:13px}
       <button data-len="long">Long</button>
     </div>
     <p class="hintline">Court pour des visuels charges, long pour des sujets techniques.</p>
+    <label for="styleia">Style graphique ajoute a chaque prompt image</label>
+    <input id="styleia" autocomplete="off">
+    <p class="hintline">Ajoute automatiquement a la fin de chaque prompt, pour que les images d'un meme carrousel se ressemblent.</p>
     <label>Sources actives</label>
     <div class="srcs" id="srcs"></div>
     <label for="newFeed">Ajouter une source</label>
@@ -474,11 +482,16 @@ function cacheSave(x){
 let carnet = store.get("v24.carnet", []);
 
 const LONGUEURS = {
-  court: {label:"Court", mots:"30 a 45 mots", puces:"3 a 4 puces de 6 mots maximum"},
-  moyen: {label:"Moyen", mots:"45 a 65 mots", puces:"4 a 5 puces d'une ligne"},
-  long:  {label:"Long",  mots:"65 a 90 mots", puces:"5 a 6 puces d'une ligne"}
+  court: {label:"Court", mots:"25 a 35 mots", puces:"3 a 4 puces de 6 mots maximum"},
+  moyen: {label:"Moyen", mots:"35 a 50 mots", puces:"4 a 5 puces d'une ligne"},
+  long:  {label:"Long",  mots:"50 a 70 mots", puces:"5 a 6 puces d'une ligne"}
 };
 function longueur(){ return LONGUEURS[store.get("v24.len", "moyen")] || LONGUEURS.moyen; }
+
+const STYLE_IA_DEFAUT = "cinematic space illustration, deep navy and near-black palette, " +
+  "warm amber and gold accents, dramatic rim lighting, volumetric light, high detail, " +
+  "vertical 4:5 composition, no text, no watermark, no logo";
+function styleIA(){ return store.get("v24.styleia", STYLE_IA_DEFAUT); }
 
 function inCarnet(k){ return carnet.some(c => c.key === k); }
 
@@ -646,6 +659,27 @@ function mark(txt, terms){
   return out;
 }
 
+function promptComplet(sl){
+  return (sl.prompt_ia || "").trim() + ", " + styleIA();
+}
+function visuelHtml(sl, i){
+  let s = "";
+  const n = parseInt(sl.nb_images, 10) || 1;
+  if(sl.visuel) s += '<div class="vis">' + (n > 1 ? n + " images a chercher : " : "Image a chercher : ") +
+    esc(sl.visuel) + '</div>';
+  const arch = (sl.type_visuel || "") === "archive";
+  const p = (sl.prompt_ia || "").trim();
+  if(!p) return s;
+  if(arch || /photo d'archive/i.test(p)){
+    s += '<div class="vwarn">Archive recommandee : sujet reel, une image generee induirait en erreur.</div>';
+    return s;
+  }
+  s += '<div class="vprompt"><div class="vph">Prompt image IA' +
+    '<button data-prompt="' + i + '">copier</button></div>' +
+    '<code>' + esc(promptComplet(sl)) + '</code></div>';
+  return s;
+}
+
 function slidesHtml(x){
   let s = '';
   if(!x.slides) return s;
@@ -654,7 +688,8 @@ function slidesHtml(x){
     if(x.slides.titre){
       s += '<div class="slide cover"><div class="n">Couverture</div>' +
         '<div class="ct">' + esc(x.slides.titre) + '</div>' +
-        '<div class="cs">' + esc(x.slides.sous_titre || "") + '</div></div>';
+        '<div class="cs">' + esc(x.slides.sous_titre || "") + '</div>' +
+        visuelHtml(x.slides, 0) + '</div>';
     }
     (x.slides.slides || []).forEach((sl, i) => {
       s += '<div class="slide"><div class="n">Slide ' + (i + 2) + '</div>' +
@@ -664,7 +699,7 @@ function slidesHtml(x){
       }else{
         s += '<div class="x">' + mark(sl.texte || "", sl.surligner) + '</div>';
       }
-      if(sl.visuel) s += '<div class="vis">Visuel : ' + esc(sl.visuel) + '</div>';
+      s += visuelHtml(sl, i + 1);
       s += '</div>';
     });
     if(x.slides.legende) s += '<div class="cap"><b>Légende</b>\n' + esc(x.slides.legende) +
@@ -718,6 +753,7 @@ function detailHtml(x){
     s += slidesHtml(x);
     s += '<div class="row">' +
       '<button class="btn" data-act="copyslides">Copier le carrousel</button>' +
+      '<button class="btn" data-act="copyprompts">Copier tous les prompts</button>' +
       '<button class="btn" data-act="dlslides">Télécharger .md</button>' +
     '</div>';
   }
@@ -842,10 +878,14 @@ async function makeSlides(x){
       "LA COUVERTURE, point le plus delicat.\n" +
       "Pars du titre de l'article : il a ete ecrit par un journaliste pour un lectorat large, " +
       "il dit deja l'essentiel. Reformule-le, ne le recopie pas.\n" +
-      "Un titre de 2 a 5 mots en capitales, et un sous-titre de 4 a 9 mots.\n" +
+      "Un titre de 3 a 6 mots en capitales, qui peut tenir sur deux lignes, " +
+      "et un sous-titre de 3 a 6 mots en capitales lui aussi. " +
+      "Une question directe fonctionne tres bien en titre quand le carrousel y repond.\n" +
       "Test obligatoire avant de valider ta couverture : quelqu'un qui ne connait rien au sujet " +
       "et qui ne lit que ces deux lignes doit pouvoir dire de quoi il s'agit. " +
       "Si ce n'est pas le cas, recommence.\n" +
+      "Ajoute pour la couverture les memes champs visuel, type_visuel et prompt_ia " +
+      "que pour les slides.\n" +
       "N'utilise jamais comme titre une designation de catalogue, un sigle, un acronyme " +
       "ou un nom de mission que le grand public ne connait pas. G+0.633, NGC 1234, LRO : " +
       "ces noms ne disent rien a personne et n'ont rien a faire en couverture. " +
@@ -863,8 +903,15 @@ async function makeSlides(x){
       "rhetorique : ces elements viennent apres, une fois le fait pose, et seulement s'ils " +
       "apportent quelque chose.\n" +
       "Les slides suivants approfondissent : comment cela fonctionne, ce que cela change, " +
-      "le detail concret qui marque.\n\n" +
-      "Chaque slide de contenu porte un titre court en capitales, 5 mots maximum, " +
+      "le detail concret qui marque.\n" +
+      "LE DERNIER SLIDE se choisit selon ce qui sert le mieux le sujet, sans regle fixe. " +
+      "Plusieurs fins fonctionnent : une anecdote frappante ou un fait peu connu, " +
+      "un encadre de reperes utiles comme la distinction entre deux termes voisins, " +
+      "des conseils pratiques quand le sujet est observable, ce qu'il faut retenir, " +
+      "ou un appel a commenter quand une vraie question se pose au lecteur. " +
+      "Choisis en fonction de la matiere disponible, n'applique pas la meme fin a chaque fois, " +
+      "et n'invente jamais une anecdote absente de la source.\n\n" +
+      "Chaque slide de contenu porte un titre court en capitales, 3 a 6 mots, " +
       "volontiers formule en question directe. Le titre annonce le contenu du slide, " +
       "il n'est pas une accroche mysterieuse.\n" +
       "Deux mises en forme possibles. Le type texte pour un paragraphe de " + longueur().mots + ". " +
@@ -872,11 +919,33 @@ async function makeSlides(x){
       "techniques, des facons de suivre l'evenement : " + longueur().puces + ".\n" +
       "Va a l'essentiel. Chaque phrase doit apporter une information nouvelle. " +
       "Coupe tout ce qui est du remplissage, de la transition ou de l'emphase.\n\n" +
-      "Pour chaque slide, le champ surligner contient 2 a 4 expressions exactes, " +
-      "reprises mot pour mot du texte du slide, qui seront mises en couleur. " +
-      "Choisis les segments porteurs de sens : un chiffre marquant, une premiere, " +
-      "un enjeu. Jamais un mot isole sans interet, jamais une phrase entiere.\n\n" +
-      "visuel : pour chaque slide, une phrase decrivant l'image a chercher.\n" +
+      "Le champ surligner contient les mots et groupes de mots importants du slide, " +
+      "repris exactement, qui seront mis en couleur. " +
+      "Surligne ce qui porte l'information : les chiffres avec leur unite, les noms propres, " +
+      "les dates, les termes techniques que tu viens d'expliquer, et les quelques mots " +
+      "qui portent l'idee forte. " +
+      "Le nombre depend du slide, en general trois a huit segments de 1 a 5 mots. " +
+      "Un slide riche en donnees en compte plus, un slide d'ambiance beaucoup moins. " +
+      "N'en mets pas au point que presque tout soit colore : ce qui est surligne " +
+      "ne ressort que si le reste ne l'est pas.\n\n" +
+      "Pour chaque slide, trois champs sur l'illustration.\n" +
+      "type_visuel : archive si le slide montre un objet, un lieu, un engin ou une personne " +
+      "reels, auquel cas seule une vraie photo convient. illustration si le slide expose " +
+      "un concept, une comparaison, une echelle, un mecanisme ou une ambiance, " +
+      "cas ou une image generee est acceptable.\n" +
+      "visuel : une phrase en francais decrivant l'image a chercher dans les archives, " +
+      "avec les mots-cles utiles pour la recherche.\n" +
+      "nb_images : 1 par defaut, ou 4 quand le slide gagne a montrer une serie comparable, " +
+      "par exemple plusieurs cliches d'un meme phenomene ou plusieurs protagonistes. " +
+      "Dans ce cas, visuel decrit les quatre images attendues.\n" +
+      "prompt_ia : une consigne de generation d'image, en anglais, decrivant uniquement " +
+      "le sujet et la composition, en 20 a 40 mots. N'y mets aucune indication de style, " +
+      "de couleur ni de format, elles sont ajoutees automatiquement.\n" +
+      "REGLE ABSOLUE sur prompt_ia : jamais de personne reelle identifiable, " +
+      "jamais un objet astronomique reel presente comme s'il etait photographie, " +
+      "jamais un engin spatial existant rendu de facon realiste. " +
+      "Pour ces cas, mets type_visuel a archive et ecris dans prompt_ia " +
+      "la phrase : utiliser une photo d'archive, pas d'image generee.\n" +
       "legende : 3 a 5 phrases, terminees obligatoirement par le credit exact " +
       "de la signature ci-dessus, suivi du lien.\n" +
       "a_verifier : tous les points a confirmer sur l'article avant publication, " +
@@ -884,7 +953,8 @@ async function makeSlides(x){
       "hashtags : 8 hashtags francais et anglais.\n\n" +
       "JSON attendu : {\"titre\":\"\",\"sous_titre\":\"\"," +
       "\"slides\":[{\"titre\":\"\",\"type\":\"texte\",\"texte\":\"\",\"puces\":[]," +
-      "\"surligner\":[\"\"],\"visuel\":\"\"}]," +
+      "\"surligner\":[\"\"],\"visuel\":\"\",\"nb_images\":1," +
+      "\"type_visuel\":\"archive\",\"prompt_ia\":\"\"}]," +
       "\"legende\":\"\",\"a_verifier\":[\"\"],\"hashtags\":\"\"}",
       3000
     );
@@ -973,6 +1043,19 @@ async function verify(x){
   }
 }
 
+function promptsText(x){
+  const all = [];
+  if(x.slides.titre && x.slides.prompt_ia && x.slides.type_visuel !== "archive")
+    all.push("COUVERTURE\n" + promptComplet(x.slides));
+  (x.slides.slides || []).forEach((sl, i) => {
+    if(sl.type_visuel === "archive")
+      all.push("SLIDE " + (i + 2) + "\nArchive recommandee : " + (sl.visuel || ""));
+    else if(sl.prompt_ia)
+      all.push("SLIDE " + (i + 2) + "\n" + promptComplet(sl));
+  });
+  return all.join("\n\n") || "Aucun prompt disponible.";
+}
+
 function slidesText(x){
   const cr = x.author ? x.author + " pour " + x.src : x.src;
   let s = (x.fr || x.title) + "\n" + cr + " · " +
@@ -994,7 +1077,9 @@ function slidesText(x){
     if(Array.isArray(sl.surligner) && sl.surligner.length){
       s += "À surligner : " + sl.surligner.join(" | ") + "\n";
     }
-    if(sl.visuel) s += "Visuel : " + sl.visuel + "\n";
+    if(sl.visuel) s += "Image a chercher : " + sl.visuel + "\n";
+    if(sl.type_visuel === "archive") s += "Archive recommandee, pas d'image generee\n";
+    else if(sl.prompt_ia) s += "Prompt IA : " + promptComplet(sl) + "\n";
     s += "\n";
   });
 
@@ -1043,6 +1128,7 @@ document.getElementById("list").addEventListener("click", e => {
     if(a === "slides") makeSlides(x);
     if(a === "copylink") navigator.clipboard.writeText(x.link).then(() => toast("Lien copié"));
     if(a === "verify") verify(x);
+    if(a === "copyprompts") navigator.clipboard.writeText(promptsText(x)).then(() => toast("Prompts copiés"));
     if(a === "keep") toggleCarnet(x);
     if(a === "copyslides") navigator.clipboard.writeText(slidesText(x)).then(() => toast("Carrousel copié"));
     if(a === "dlslides"){
@@ -1104,6 +1190,12 @@ document.getElementById("carnetExport").addEventListener("click", () => {
   el.click(); URL.revokeObjectURL(el.href);
 });
 
+document.addEventListener("click", e => {
+  const b = e.target.closest("button[data-prompt]"); if(!b) return;
+  const code = b.closest(".vprompt").querySelector("code");
+  navigator.clipboard.writeText(code.textContent).then(() => toast("Prompt copié"));
+});
+
 document.getElementById("refresh").addEventListener("click", load);
 document.getElementById("translate").addEventListener("click", translateAll);
 
@@ -1119,6 +1211,7 @@ document.getElementById("settings").addEventListener("click", () => {
   const cur = store.get("v24.len", "moyen");
   document.querySelectorAll("#lenSeg button").forEach(b =>
     b.setAttribute("aria-pressed", b.dataset.len === cur));
+  document.getElementById("styleia").value = styleIA();
   drawSrcs();
   dlg.showModal();
 });
@@ -1164,6 +1257,8 @@ document.getElementById("dlgSave").addEventListener("click", () => {
     if(f){ f.on = cb.checked; m[f.id] = cb.checked; }
   });
   store.set("v24.feeds", m);
+  const si = document.getElementById("styleia").value.trim();
+  store.set("v24.styleia", si || STYLE_IA_DEFAUT);
   dlg.close();
   load();
 });
@@ -1520,11 +1615,17 @@ async function archCarousel(payload){
       "Type texte pour un paragraphe de " + longueur().mots + ", type liste pour ce qui s'enumere.\n" +
       "Va a l'essentiel, chaque phrase doit apporter une information.\n" +
       "surligner : 2 a 4 expressions exactes du texte du slide.\n" +
-      "visuel : l'image a chercher pour ce slide.\n" +
+      "Pour chaque slide : type_visuel valant archive ou illustration, " +
+      "visuel decrivant l'image a chercher dans les archives, " +
+      "et prompt_ia, une consigne de generation en anglais de 20 a 40 mots, sujet et composition " +
+      "seulement, sans style ni couleur. Jamais de personne reelle identifiable dans prompt_ia, " +
+      "jamais un engin ou un lieu historique rendu de facon realiste : " +
+      "pour ces cas, type_visuel vaut archive.\n" +
       "legende : 3 a 5 phrases. Ne cite aucune source que tu n'as pas.\n" +
       "hashtags : 8 hashtags.\n\n" +
       "JSON : {\"titre\":\"\",\"sous_titre\":\"\"," +
-      "\"slides\":[{\"titre\":\"\",\"type\":\"texte\",\"texte\":\"\",\"puces\":[],\"surligner\":[\"\"],\"visuel\":\"\"}]," +
+      "\"slides\":[{\"titre\":\"\",\"type\":\"texte\",\"texte\":\"\",\"puces\":[],\"surligner\":[\"\"]," +
+      "\"visuel\":\"\",\"type_visuel\":\"archive\",\"prompt_ia\":\"\"}]," +
       "\"legende\":\"\",\"a_verifier\":[\"\"],\"hashtags\":\"\"}",
       3000
     );
