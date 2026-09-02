@@ -95,6 +95,15 @@ h1 em{font-style:italic;color:var(--glow);font-weight:400}
 .item.lu .fr.raw{color:var(--faint)}
 .item.lu .excerpt{color:var(--faint)}
 .item.lu .age{opacity:.4}
+.n-primaire{background:#122c26;color:#5fd0a8}
+.n-redaction{background:#152838;color:var(--glow)}
+.n-reprise{background:#33290f;color:var(--amber)}
+.n-social{background:#2e1f16;color:#e39b7a}
+.n-inconnu{background:#1c2431;color:var(--faint)}
+.niv{border-radius:3px;padding:9px 11px;margin-bottom:11px;font-size:13px}
+.niv b{font-size:13.5px}
+.niv p{margin:4px 0 0;opacity:.82;font-size:12.5px;max-width:62ch}
+.niv p.q{opacity:1;font-weight:500}
 .tag{display:inline-block;font-size:10.5px;padding:1px 6px;border-radius:2px;letter-spacing:.02em}
 .t-ok{background:#16301f;color:var(--ok)}
 .t-warn{background:#3a2c12;color:var(--amber)}
@@ -133,6 +142,9 @@ h1 em{font-style:italic;color:var(--glow);font-weight:400}
 .cb a:hover{color:var(--glow)}
 .cb button:hover{color:var(--ember)}
 .cempty{color:var(--faint);font-size:13px;margin:0}
+.legende .lg{margin-bottom:8px;font-size:13px}
+.legende .lg b{margin-left:5px}
+.legende .lg p{margin:2px 0 0;font-size:12px;color:var(--faint);max-width:60ch}
 #carnetList{max-height:60vh;overflow-y:auto}
 .ok2{border:1px solid #2c5a44;background:#0f1b16;border-radius:3px;padding:11px 13px;font-size:13px;color:var(--dim)}
 .ok2 b{color:var(--ok);font-weight:500}
@@ -230,6 +242,8 @@ input[type=checkbox]{accent-color:#4c8fb5;width:13px;height:13px}
     <label for="styleia">Style graphique ajoute a chaque prompt image</label>
     <input id="styleia" autocomplete="off">
     <p class="hintline">Ajoute automatiquement a la fin de chaque prompt, pour que les images d'un meme carrousel se ressemblent.</p>
+    <label>Nature des sources</label>
+    <div class="legende" id="legende"></div>
     <label>Sources actives</label>
     <div class="srcs" id="srcs"></div>
     <label for="newFeed">Ajouter une source</label>
@@ -256,38 +270,67 @@ const store={
 
 /* ---------- sources ---------- */
 const FEEDS=[
-  {id:"nsf",  name:"NASASpaceflight",      url:"https://www.nasaspaceflight.com/feed/", on:true},
-  {id:"sfn",  name:"Spaceflight Now",      url:"https://spaceflightnow.com/feed/", on:true},
-  {id:"sn",   name:"SpaceNews",            url:"https://spacenews.com/feed/", on:true},
-  {id:"eusf", name:"European Spaceflight", url:"https://europeanspaceflight.com/feed/", on:true},
-  {id:"payl", name:"Payload",              url:"https://payloadspace.com/feed/", on:true},
-  {id:"ars",  name:"Ars Technica Space",   url:"https://feeds.arstechnica.com/arstechnica/space", on:true},
-  {id:"nasa", name:"NASA breaking news",   url:"https://www.nasa.gov/rss/dyn/breaking_news.rss", on:true},
-  {id:"esan", name:"ESA actualités",       url:"https://www.esa.int/rssfeed/Our_Activities/Space_News", on:true},
-  {id:"jpl",  name:"NASA JPL",             url:"https://www.jpl.nasa.gov/feeds/news/", on:true},
-  {id:"eso",  name:"ESO",                  url:"https://www.eso.org/public/rss/news/en/", on:true},
-  {id:"hst",  name:"ESA/Hubble",           url:"https://esahubble.org/rss/news/en/", on:true},
-  {id:"jwst", name:"ESA/Webb",             url:"https://esawebb.org/rss/news/en/", on:true},
-  {id:"noir", name:"NOIRLab",              url:"https://noirlab.edu/public/news/feed/", on:true},
-  {id:"apod", name:"APOD",                 url:"https://apod.nasa.gov/apod.rss", on:true},
-  {id:"aas",  name:"AAS Nova",             url:"https://aasnova.org/feed/", on:true},
-  {id:"phys", name:"Phys.org astronomie",  url:"https://phys.org/rss-feed/space-news/astronomy/", on:true},
-  {id:"ut",   name:"Universe Today",       url:"https://www.universetoday.com/feed/", on:true},
-  {id:"snt",  name:"Sky & Telescope",      url:"https://skyandtelescope.org/astronomy-news/feed/", on:true},
-  {id:"futura",name:"Futura espace",       url:"https://www.futura-sciences.com/rss/espace/actualites.xml", on:true},
-  {id:"ciel", name:"Ciel & Espace",        url:"https://www.cieletespace.fr/rss", on:false},
+  {id:"nsf",  name:"NASASpaceflight",      url:"https://www.nasaspaceflight.com/feed/", fiab:"redaction", on:true},
+  {id:"sfn",  name:"Spaceflight Now",      url:"https://spaceflightnow.com/feed/", fiab:"redaction", on:true},
+  {id:"sn",   name:"SpaceNews",            url:"https://spacenews.com/feed/", fiab:"redaction", on:true},
+  {id:"eusf", name:"European Spaceflight", url:"https://europeanspaceflight.com/feed/", fiab:"redaction", on:true},
+  {id:"payl", name:"Payload",              url:"https://payloadspace.com/feed/", fiab:"redaction", on:true},
+  {id:"ars",  name:"Ars Technica Space",   url:"https://feeds.arstechnica.com/arstechnica/space", fiab:"redaction", on:true},
+  {id:"nasa", name:"NASA breaking news",   url:"https://www.nasa.gov/rss/dyn/breaking_news.rss", fiab:"primaire", on:true},
+  {id:"esan", name:"ESA actualités",       url:"https://www.esa.int/rssfeed/Our_Activities/Space_News", fiab:"primaire", on:true},
+  {id:"jpl",  name:"NASA JPL",             url:"https://www.jpl.nasa.gov/feeds/news/", fiab:"primaire", on:true},
+  {id:"eso",  name:"ESO",                  url:"https://www.eso.org/public/rss/news/en/", fiab:"primaire", on:true},
+  {id:"hst",  name:"ESA/Hubble",           url:"https://esahubble.org/rss/news/en/", fiab:"primaire", on:true},
+  {id:"jwst", name:"ESA/Webb",             url:"https://esawebb.org/rss/news/en/", fiab:"primaire", on:true},
+  {id:"noir", name:"NOIRLab",              url:"https://noirlab.edu/public/news/feed/", fiab:"primaire", on:true},
+  {id:"apod", name:"APOD",                 url:"https://apod.nasa.gov/apod.rss", fiab:"primaire", on:true},
+  {id:"aas",  name:"AAS Nova",             url:"https://aasnova.org/feed/", fiab:"redaction", on:true},
+  {id:"phys", name:"Phys.org astronomie",  url:"https://phys.org/rss-feed/space-news/astronomy/", fiab:"reprise", on:true},
+  {id:"ut",   name:"Universe Today",       url:"https://www.universetoday.com/feed/", fiab:"reprise", on:true},
+  {id:"snt",  name:"Sky & Telescope",      url:"https://skyandtelescope.org/astronomy-news/feed/", fiab:"redaction", on:true},
+  {id:"futura",name:"Futura espace",       url:"https://www.futura-sciences.com/rss/espace/actualites.xml", fiab:"reprise", on:true},
+  {id:"ciel", name:"Ciel & Espace",        url:"https://www.cieletespace.fr/rss", fiab:"reprise", on:false},
 
   // comptes Bluesky : souvent les premiers à publier
-  {id:"bsBerger", name:"Bluesky · Eric Berger",       url:"https://bsky.app/profile/sciguyspace.bsky.social/rss", on:true},
-  {id:"bsMcD",    name:"Bluesky · Jonathan McDowell", url:"https://bsky.app/profile/planet4589.bsky.social/rss", on:true},
-  {id:"bsTech",   name:"Bluesky · Techniques Spatiales", url:"https://bsky.app/profile/techspatiales.bsky.social/rss", on:true},
-  {id:"bsXplo",   name:"Bluesky · Xplora",            url:"https://bsky.app/profile/xploraspace.bsky.social/rss", on:true},
+  {id:"bsBerger", name:"Bluesky · Eric Berger",       url:"https://bsky.app/profile/sciguyspace.bsky.social/rss", fiab:"social", on:true},
+  {id:"bsMcD",    name:"Bluesky · Jonathan McDowell", url:"https://bsky.app/profile/planet4589.bsky.social/rss", fiab:"social", on:true},
+  {id:"bsTech",   name:"Bluesky · Techniques Spatiales", url:"https://bsky.app/profile/techspatiales.bsky.social/rss", fiab:"social", on:true},
+  {id:"bsXplo",   name:"Bluesky · Xplora",            url:"https://bsky.app/profile/xploraspace.bsky.social/rss", fiab:"social", on:true},
 
   // alertes scientifiques à chaud
-  {id:"atel", name:"Astronomer's Telegram", url:"http://www.astronomerstelegram.org/?rss", on:true},
-  {id:"spol", name:"SpacePolicyOnline",     url:"https://spacepolicyonline.com/feed/", on:true},
-  {id:"eskt", name:"EarthSky",              url:"https://earthsky.org/feed/", on:true}
+  {id:"atel", name:"Astronomer's Telegram", url:"http://www.astronomerstelegram.org/?rss", fiab:"primaire", on:true},
+  {id:"spol", name:"SpacePolicyOnline",     url:"https://spacepolicyonline.com/feed/", fiab:"redaction", on:true},
+  {id:"eskt", name:"EarthSky",              url:"https://earthsky.org/feed/", fiab:"reprise", on:true}
 ];
+
+const NIVEAUX = {
+  primaire: {
+    court:"primaire", nom:"Source primaire",
+    dit:"L'organisme annonce son propre travail. Les faits sont a la source, mais la mise en perspective est promotionnelle : ce qui gene est rarement mis en avant.",
+    quoi:"Fiable sur les faits, a completer par un regard exterieur pour le contexte."
+  },
+  redaction: {
+    court:"redaction", nom:"Redaction specialisee",
+    dit:"Des journalistes identifies qui suivent le sujet, recoupent et mettent en perspective.",
+    quoi:"Le meilleur equilibre. Verifie quand meme les chiffres avant publication."
+  },
+  reprise: {
+    court:"reprise", nom:"Reprise et vulgarisation",
+    dit:"Reprend des communiques ou vulgarise sans enquete propre. Le fond vient d'ailleurs, et le titrage est souvent plus enthousiaste que l'etude elle-meme.",
+    quoi:"Remonte a la source d'origine avant de publier un chiffre ou une conclusion."
+  },
+  social: {
+    court:"social", nom:"Message de reseau",
+    dit:"Publication d'un compte, sans relecture editoriale. Souvent le plus rapide, parfois une reaction a chaud.",
+    quoi:"A confirmer par une autre source avant d'en faire un carrousel."
+  },
+  inconnu: {
+    court:"a evaluer", nom:"Source ajoutee par toi",
+    dit:"Source personnelle, je n'ai pas d'avis dessus.",
+    quoi:"A toi de juger."
+  }
+};
+function niveau(x){ return NIVEAUX[x && x.fiab] || NIVEAUX.inconnu; }
 
 const savedOn = store.get("v24.feeds", {});
 const custom = store.get("v24.custom", []);
@@ -404,7 +447,7 @@ function parseFeed(xml, feed){
     return {
       key: (link || "").replace(/[?#].*$/,""),
       title: strip(txt(n,"title")) || "(sans titre)",
-      link, t, src: feed.name, author,
+      link, t, src: feed.name, author, fiab: feed.fiab || "inconnu",
       social: /bsky\.app/i.test(feed.url),
       excerpt: strip(body).slice(0, 500),
       img: /^https?:/.test(img) ? img : "",
@@ -634,6 +677,8 @@ function render(){
         '<div class="age ' + cls + '"></div>' +
         '<div>' +
           '<div class="meta"><span class="s">' + esc(x.src) + '</span> · ' + ago(x.t) +
+            ' <span class="tag n-' + esc(x.fiab || "inconnu") + '" title="' +
+              esc(niveau(x).nom + ". " + niveau(x).dit) + '">' + esc(niveau(x).court) + '</span>' +
             (fait ? ' <span class="tag t-ok">carrousel</span>' : '') +
             (vu && !fait ? ' <span class="tag t-lu">lu</span>' : '') + '</div>' +
           '<p class="fr' + (x.fr ? "" : " raw") + '">' + esc(x.fr || x.title) + '</p>' +
@@ -733,6 +778,10 @@ function slidesHtml(x){
 function detailHtml(x){
   let s = '<div class="detail">';
   if(x.img) s += '<img src="' + esc(x.img) + '" alt="" loading="lazy" onerror="this.remove()">';
+  const nv = niveau(x);
+  s += '<div class="lbl">Nature de la source</div>' +
+    '<div class="niv n-' + esc(x.fiab || "inconnu") + '"><b>' + esc(nv.nom) + '</b>' +
+    '<p>' + esc(nv.dit) + '</p><p class="q">' + esc(nv.quoi) + '</p></div>';
   s += '<div class="lbl">Source</div>';
   s += '<p><a href="' + esc(x.link) + '" target="_blank" rel="noopener">' + esc(x.src) + ' · ouvrir l\'article original</a><br>' +
        '<span style="color:var(--faint);font-size:12.5px">' + esc(x.link) + '</span></p>';
@@ -866,6 +915,15 @@ async function makeSlides(x){
       "Rédige un carrousel Instagram à partir de cet article.\n\n" +
       "TITRE DE L'ARTICLE : " + x.title + "\n" +
       (x.fr ? "TRADUCTION DE CE TITRE : " + x.fr + "\n" : "") +
+      "NATURE DE LA SOURCE : " + niveau(x).nom + ". " + niveau(x).dit + "\n" +
+      (x.fiab === "reprise" ? "Cette source reprend un travail realise ailleurs. " +
+        "Si le texte mentionne l'etude, la revue ou l'equipe d'origine, cite les. " +
+        "Signale dans a_verifier qu'il faut remonter a la publication originale.\n" : "") +
+      (x.fiab === "social" ? "Message de reseau social, sans relecture editoriale. " +
+        "Ecris au conditionnel ce qui n'est pas etabli et dis dans la legende " +
+        "que l'information reste a confirmer.\n" : "") +
+      (x.fiab === "primaire" ? "L'organisme parle de son propre travail : la communication " +
+        "est orientee. Ne reprends pas ses superlatifs a ton compte.\n" : "") +
       "SIGNATURE À CRÉDITER : " + credit + "\n" +
       "LIEN : " + x.link + "\n" +
       (art.ok ? "" : "ATTENTION : tu n'as qu'un court extrait, pas l'article entier. " +
@@ -878,9 +936,23 @@ async function makeSlides(x){
       "LA COUVERTURE, point le plus delicat.\n" +
       "Pars du titre de l'article : il a ete ecrit par un journaliste pour un lectorat large, " +
       "il dit deja l'essentiel. Reformule-le, ne le recopie pas.\n" +
-      "Un titre de 3 a 6 mots en capitales, qui peut tenir sur deux lignes, " +
-      "et un sous-titre de 3 a 6 mots en capitales lui aussi. " +
-      "Une question directe fonctionne tres bien en titre quand le carrousel y repond.\n" +
+      "Un titre de 3 a 7 mots en capitales, qui peut tenir sur deux lignes, " +
+      "et un sous-titre de 3 a 7 mots en capitales lui aussi.\n" +
+      "REGLE DE FORME OBLIGATOIRE POUR LE TITRE : il contient un verbe conjugue, " +
+      "ou bien il est une question directe. " +
+      "Un simple groupe nominal est refuse : il nomme un sujet au lieu de raconter " +
+      "ce qui se passe, et le lecteur n'a aucune raison de faire defiler.\n" +
+      "Exemples de la forme attendue : ET SI ON REUTILISAIT LES BOUCLIERS THERMIQUES ? " +
+      "SOPHIE ADENOT RETOURNE DANS LE VIDE. UNE ECLIPSE DEPUIS L'ESPACE ? " +
+      "Exemples de ce qui est refuse : BOUCLIERS THERMIQUES REUTILISABLES. " +
+      "NOUVELLE MISSION INTERSTELLAIRE. DECOUVERTE MOLECULAIRE MAJEURE.\n" +
+      "LE SOUS-TITRE apporte une information concrete que le titre ne donne pas : " +
+      "qui, ou, quand, combien, ou l'enjeu precis. " +
+      "Il n'est jamais un slogan. Sont refusees les formules du type " +
+      "TESTER LA TECHNOLOGIE DU FUTUR, UNE REVOLUTION EN MARCHE, " +
+      "L'AVENIR DE L'EXPLORATION : elles conviendraient a dix sujets differents.\n" +
+      "TEST FINAL : si ton titre ou ton sous-titre pourrait coiffer un autre article " +
+      "de la meme semaine, ils sont trop vagues, recommence.\n" +
       "Test obligatoire avant de valider ta couverture : quelqu'un qui ne connait rien au sujet " +
       "et qui ne lit que ces deux lignes doit pouvoir dire de quoi il s'agit. " +
       "Si ce n'est pas le cas, recommence.\n" +
@@ -1204,6 +1276,7 @@ function drawSrcs(){
   document.getElementById("srcs").innerHTML = feeds.map(f =>
     '<div><input type="checkbox" id="s_' + f.id + '" data-f="' + f.id + '"' + (f.on ? " checked" : "") + '>' +
     '<label for="s_' + f.id + '" title="' + esc(f.url) + '">' + esc(f.name) + '</label>' +
+    '<span class="tag n-' + esc(f.fiab || "inconnu") + '">' + esc(niveau(f).court) + '</span>' +
     (f.mine ? '<button class="kill" data-kill="' + f.id + '" title="Retirer cette source">×</button>' : '') +
     '</div>').join("");
 }
@@ -1211,6 +1284,9 @@ document.getElementById("settings").addEventListener("click", () => {
   const cur = store.get("v24.len", "moyen");
   document.querySelectorAll("#lenSeg button").forEach(b =>
     b.setAttribute("aria-pressed", b.dataset.len === cur));
+  document.getElementById("legende").innerHTML = ["primaire","redaction","reprise","social"]
+    .map(k => '<div class="lg"><span class="tag n-' + k + '">' + NIVEAUX[k].court + '</span> ' +
+      '<b>' + esc(NIVEAUX[k].nom) + '</b><p>' + esc(NIVEAUX[k].quoi) + '</p></div>').join("");
   document.getElementById("styleia").value = styleIA();
   drawSrcs();
   dlg.showModal();
@@ -1606,7 +1682,9 @@ async function archCarousel(payload){
       "que tu avances et qui ne figure pas dans le resume ci-dessus. Sois exhaustif sur ce point : " +
       "c'est un contenu commemoratif, une erreur de date serait immediatement reperee.\n\n" +
       "FORMAT\nUne couverture, puis 3 ou 4 slides de contenu.\n" +
-      "Couverture : titre de 2 a 5 mots en capitales, sous-titre de 4 a 9 mots. " +
+      "Couverture : titre de 3 a 7 mots en capitales, sous-titre de 3 a 7 mots. " +
+      "Le titre contient un verbe conjugue ou est une question directe, jamais un simple " +
+      "groupe nominal. Le sous-titre apporte une information concrete, pas un slogan. " +
       "Quelqu'un qui ne connait pas l'evenement doit comprendre de quoi il s'agit " +
       "en lisant ces deux lignes seules. Pas de sigle ni de designation technique en titre.\n" +
       "Le slide 2 expose le fait : ce qui s'est passe ce jour-la, sans detour ni mise en scene. " +
