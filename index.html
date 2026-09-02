@@ -933,40 +933,42 @@ async function makeSlides(x){
       "FORMAT ATTENDU\n" +
       "Une couverture, puis 3 ou 4 slides de contenu. Quatre si la matiere est riche, trois sinon. " +
       "Ne gonfle jamais pour atteindre quatre.\n\n" +
-      "LA COUVERTURE, point le plus delicat.\n" +
-      "Pars du titre de l'article : il a ete ecrit par un journaliste pour un lectorat large, " +
-      "il dit deja l'essentiel. Reformule-le, ne le recopie pas.\n" +
-      "Un titre de 3 a 7 mots en capitales, qui peut tenir sur deux lignes, " +
-      "et un sous-titre de 3 a 7 mots en capitales lui aussi.\n" +
-      "REGLE DE FORME OBLIGATOIRE POUR LE TITRE : il contient un verbe conjugue, " +
-      "ou bien il est une question directe. " +
-      "Un simple groupe nominal est refuse : il nomme un sujet au lieu de raconter " +
-      "ce qui se passe, et le lecteur n'a aucune raison de faire defiler.\n" +
-      "Exemples de la forme attendue : ET SI ON REUTILISAIT LES BOUCLIERS THERMIQUES ? " +
-      "SOPHIE ADENOT RETOURNE DANS LE VIDE. UNE ECLIPSE DEPUIS L'ESPACE ? " +
-      "Exemples de ce qui est refuse : BOUCLIERS THERMIQUES REUTILISABLES. " +
-      "NOUVELLE MISSION INTERSTELLAIRE. DECOUVERTE MOLECULAIRE MAJEURE.\n" +
-      "LE SOUS-TITRE apporte une information concrete que le titre ne donne pas : " +
-      "qui, ou, quand, combien, ou l'enjeu precis. " +
-      "Il n'est jamais un slogan. Sont refusees les formules du type " +
-      "TESTER LA TECHNOLOGIE DU FUTUR, UNE REVOLUTION EN MARCHE, " +
-      "L'AVENIR DE L'EXPLORATION : elles conviendraient a dix sujets differents.\n" +
-      "TEST FINAL : si ton titre ou ton sous-titre pourrait coiffer un autre article " +
-      "de la meme semaine, ils sont trop vagues, recommence.\n" +
-      "Test obligatoire avant de valider ta couverture : quelqu'un qui ne connait rien au sujet " +
-      "et qui ne lit que ces deux lignes doit pouvoir dire de quoi il s'agit. " +
-      "Si ce n'est pas le cas, recommence.\n" +
+      "LA COUVERTURE.\n" +
+      "Elle est une reformulation fidele du titre de l'article, rien d'autre. " +
+      "Ce titre a ete ecrit par un journaliste pour un lectorat large : il dit deja " +
+      "ce qu'il faut dire. Ton travail est de le rendre en francais clair et de le repartir " +
+      "sur deux lignes, pas de trouver une accroche plus maligne.\n" +
+      "Methode : repere dans le titre source qui fait quoi, et a quoi. " +
+      "Mets l'action principale dans le titre, la precision dans le sous-titre.\n" +
+      "LE TITRE DOIT PORTER L'ACTION, pas seulement le sujet. " +
+      "Un participe passe suffit le plus souvent : decouvertes, testee, observee, confirmee, " +
+      "reussi, repere. Sans ce mot, le titre nomme une chose au lieu de raconter " +
+      "ce qui vient de se passer, et il tombe a plat.\n" +
+      "Compare : 120 MOLECULES PRES DU CENTRE GALACTIQUE ne dit rien, " +
+      "alors que 120 MOLECULES EXCEPTIONNELLES DECOUVERTES PRES DU CENTRE GALACTIQUE " +
+      "raconte l'evenement. La seconde forme est celle attendue.\n" +
+      "Titre de 4 a 8 mots en capitales, sous-titre de 4 a 8 mots en capitales.\n" +
+      "Tu as le droit de traduire, de simplifier un terme technique, de remplacer une " +
+      "designation de catalogue par ce qu'elle designe, et de raccourcir. " +
+      "Tu peux tourner le titre en question directe, mais seulement si cette question " +
+      "dit exactement ce que dit le titre source.\n" +
+      "TU N'AS PAS LE DROIT d'ajouter une metaphore, une image ou un effet de style " +
+      "absents du titre source. Ecrire que des chercheurs font fondre l'air quand " +
+      "l'article parle d'un bouclier magnetique est une deformation, pas une accroche. " +
+      "Pas d'imperatif publicitaire du type decouvrez, voici ou regardez. " +
+      "Un adjectif qui donne du relief est bienvenu, a une condition stricte : " +
+      "le texte source doit le porter. Si l'article dit extraordinairement riche, " +
+      "tu peux ecrire exceptionnelles ou extraordinaires. " +
+      "Si l'article ne qualifie rien, tu ne qualifies rien non plus : " +
+      "un adjectif ajoute librement est une exageration, pas du style.\n" +
+      "Le sous-titre apporte une precision reelle tiree de l'article : qui, ou, quand, " +
+      "combien, ou l'enjeu concret. Jamais un slogan interchangeable " +
+      "comme la technologie du futur ou une revolution en marche.\n" +
       "Ajoute pour la couverture les memes champs visuel, type_visuel et prompt_ia " +
       "que pour les slides.\n" +
-      "N'utilise jamais comme titre une designation de catalogue, un sigle, un acronyme " +
-      "ou un nom de mission que le grand public ne connait pas. G+0.633, NGC 1234, LRO : " +
-      "ces noms ne disent rien a personne et n'ont rien a faire en couverture. " +
-      "Mets a la place la chose concrete qui a ete trouvee, faite ou comprise. " +
-      "Les noms vraiment connus, Hubble, Mars, la Lune, un astronaute celebre, restent bienvenus.\n" +
-      "La curiosite doit naitre du fait lui-meme, pas d'un effet de manche. " +
-      "Interdits : les superlatifs non justifies par la source, les questions rhetoriques " +
-      "sans reponse, les formules du type ce que personne n'avait vu, " +
-      "et toute promesse que le carrousel ne tient pas.\n\n" +
+      "VERIFICATION : relis le titre source, puis ta couverture. " +
+      "Si un lecteur ne pouvait pas deviner le titre source a partir de ta couverture, " +
+      "tu t'es trop eloigne, recommence plus pres du texte.\n\n" +
       "REGLE LA PLUS IMPORTANTE SUR LA STRUCTURE. Le slide 2, celui qui suit immediatement " +
       "la couverture, expose le fait lui-meme, sans detour. Qui, quoi, quand, et pourquoi " +
       "on en parle aujourd'hui. Apres l'avoir lu, quelqu'un qui ne connait pas le sujet doit " +
@@ -1682,9 +1684,10 @@ async function archCarousel(payload){
       "que tu avances et qui ne figure pas dans le resume ci-dessus. Sois exhaustif sur ce point : " +
       "c'est un contenu commemoratif, une erreur de date serait immediatement reperee.\n\n" +
       "FORMAT\nUne couverture, puis 3 ou 4 slides de contenu.\n" +
-      "Couverture : titre de 3 a 7 mots en capitales, sous-titre de 3 a 7 mots. " +
-      "Le titre contient un verbe conjugue ou est une question directe, jamais un simple " +
-      "groupe nominal. Le sous-titre apporte une information concrete, pas un slogan. " +
+      "Couverture : titre de 4 a 8 mots en capitales, sous-titre de 4 a 8 mots. " +
+      "Le titre dit simplement ce qui s'est passe ce jour la, sans metaphore ajoutee, " +
+      "sans imperatif publicitaire et sans superlatif. Le sous-titre apporte une precision " +
+      "concrete : le lieu, les protagonistes ou l'enjeu. " +
       "Quelqu'un qui ne connait pas l'evenement doit comprendre de quoi il s'agit " +
       "en lisant ces deux lignes seules. Pas de sigle ni de designation technique en titre.\n" +
       "Le slide 2 expose le fait : ce qui s'est passe ce jour-la, sans detour ni mise en scene. " +
