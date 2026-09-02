@@ -56,6 +56,8 @@ h1 em{font-style:italic;color:var(--glow);font-weight:400}
 /* liste */
 .item{border-bottom:1px solid var(--line);padding:18px 0}
 .item .head{display:grid;grid-template-columns:3px 1fr;gap:0 15px;cursor:pointer}
+.detail,.mb{cursor:auto;user-select:text}
+.mh{cursor:pointer}
 .age{border-radius:2px;background:#243040}
 .age.h3{background:var(--glow);box-shadow:0 0 9px rgba(127,212,255,.45)}
 .age.h12{background:#3f7f9e}
@@ -148,6 +150,13 @@ h1 em{font-style:italic;color:var(--glow);font-weight:400}
 .legende .lg p.q2{color:var(--dim)}
 .legende .lg b{display:inline-block;margin:3px 0 0 5px}
 #carnetList{max-height:60vh;overflow-y:auto}
+.vieux{border:1px solid #5c4a1e;background:#1d1810;border-radius:3px;padding:9px 11px;margin-bottom:11px;font-size:13px}
+.vieux b{color:var(--amber);font-weight:500}
+.vieux p{margin:4px 0 0;font-size:12.5px;color:var(--dim);max-width:62ch}
+.corr{border:1px solid #2b4a63;background:#101c26;border-radius:3px;padding:11px 13px;font-size:13px;color:var(--dim);margin-bottom:8px}
+.corr b{color:var(--glow);display:block;margin-bottom:5px;font-weight:500}
+.corr ul{margin:0;padding-left:18px}
+.corr li{margin-bottom:4px;line-height:1.45}
 .ok2{border:1px solid #2c5a44;background:#0f1b16;border-radius:3px;padding:11px 13px;font-size:13px;color:var(--dim)}
 .ok2 b{color:var(--ok);font-weight:500}
 .check.soft{border-color:#2c3a4c;background:#141b25}
@@ -686,6 +695,7 @@ function render(){
           '<div class="meta"><span class="s">' + esc(x.src) + '</span> · ' + ago(x.t) +
             ' <span class="tag n-' + esc(x.fiab || "inconnu") + '" title="' +
               esc(niveau(x).nom + ". " + niveau(x).dit) + '">' + esc(niveau(x).court) + '</span>' +
+            (x.decalage ? ' <span class="tag t-warn" title="La page de l\'article indique une date bien anterieure a celle du flux">republication ?</span>' : '') +
             (fait ? ' <span class="tag t-ok">carrousel</span>' : '') +
             (vu && !fait ? ' <span class="tag t-lu">lu</span>' : '') + '</div>' +
           '<p class="fr' + (x.fr ? "" : " raw") + '">' + esc(x.fr || x.title) + '</p>' +
@@ -717,13 +727,13 @@ function promptComplet(sl){
 function visuelHtml(sl, i){
   let s = "";
   const n = parseInt(sl.nb_images, 10) || 1;
-  if(sl.visuel) s += '<div class="vis">' + (n > 1 ? n + " images a chercher : " : "Image a chercher : ") +
+  if(sl.visuel) s += '<div class="vis">' + (n > 1 ? n + " images à chercher : " : "Image à chercher : ") +
     esc(sl.visuel) + '</div>';
   const arch = (sl.type_visuel || "") === "archive";
   const p = (sl.prompt_ia || "").trim();
   if(!p) return s;
   if(arch || /photo d'archive/i.test(p)){
-    s += '<div class="vwarn">Archive recommandee : sujet reel, une image generee induirait en erreur.</div>';
+    s += '<div class="vwarn">Archive recommandée : sujet réel, une image générée induirait en erreur.</div>';
     return s;
   }
   s += '<div class="vprompt"><div class="vph">Prompt image IA' +
@@ -757,15 +767,21 @@ function slidesHtml(x){
     if(x.slides.legende) s += '<div class="cap"><b>Légende</b>\n' + esc(x.slides.legende) +
       (x.slides.hashtags ? "\n\n" + esc(x.slides.hashtags) : "") + '</div>';
     const ck = x.slides._check;
+    const corr = x.slides._corrections;
+    if(Array.isArray(corr) && corr.length){
+      s += '<div class="corr"><b>' + corr.length + ' correction(s) appliquée(s) automatiquement</b><ul>' +
+        corr.map(c => '<li>' + esc(c) + '</li>').join("") + '</ul></div>';
+    }
     if(x.checking){
-      s += '<div class="check"><b>Relecture de contrôle en cours…</b></div>';
+      s += '<div class="check"><b>' + esc(x.step2 || "Relecture de contrôle en cours…") + '</b></div>';
     }else if(ck){
       if(!ck.ecarts.length){
-        s += '<div class="ok2"><b>Relecture de contrôle : aucun écart détecté</b>' +
+        s += '<div class="ok2"><b>Relecture de contrôle : texte conforme à la source</b>' +
           (ck.partiel ? '<br>Attention, la vérification a porté sur un extrait, pas sur l\'article entier.' : '') +
           '</div>';
       }else{
-        s += '<div class="check"><b>Relecture de contrôle : ' + ck.ecarts.length + ' point(s) à revoir</b>' +
+        s += '<div class="check"><b>' + ck.ecarts.length + ' point(s) de vigilance, à trancher par toi</b>' +
+          '<p class="pt">Ce qui pouvait être corrigé automatiquement l\'a été. Ces points demandent une décision ou une vérification hors de l\'article.</p>' +
           (ck.partiel ? '<p class="pt">Vérification faite sur un extrait seulement.</p>' : '') + '<ul>' +
           ck.ecarts.map(e => '<li><span class="g g-' + esc(e.gravite || "nuance") + '">' +
             esc(e.gravite || "nuance") + '</span> <b class="w">' + esc(e.ou || "") + '</b><br>' +
@@ -785,6 +801,12 @@ function slidesHtml(x){
 function detailHtml(x){
   let s = '<div class="detail">';
   if(x.img) s += '<img src="' + esc(x.img) + '" alt="" loading="lazy" onerror="this.remove()">';
+  if(x.decalage){
+    s += '<div class="vieux"><b>Article plus ancien que sa reprise</b>' +
+      '<p>Le flux l\'a diffuse ' + ago(x.t) + ', mais la page indique une publication du ' +
+      new Date(x.publie).toLocaleDateString("fr-FR") + ', soit ' + x.decalage + ' jours plus tot. ' +
+      'Verifie s\'il s\'agit d\'une vraie nouveaute ou d\'une republication.</p></div>';
+  }
   const nv = niveau(x);
   s += '<div class="lbl">Nature de la source</div>' +
     '<div class="niv n-' + esc(x.fiab || "inconnu") + '"><b>' + esc(nv.nom) + '</b>' +
@@ -911,6 +933,14 @@ async function makeSlides(x){
       ? "article complet, " + art.chars + " signes"
       : "extrait du flux seulement (" + art.why + ")";
     if(art.ok && art.image && !x.img) x.img = art.image;
+    if(art.publie){
+      const dp = Date.parse(art.publie);
+      if(!isNaN(dp)){
+        x.publie = dp;
+        const ecart = Math.round((x.t - dp) / 86400e3);
+        x.decalage = ecart >= 3 ? ecart : 0;
+      }
+    }
     const credit = (art.ok && art.author ? art.author : x.author)
       ? ((art.ok && art.author ? art.author : x.author) + " pour " + x.src)
       : x.src;
@@ -923,6 +953,9 @@ async function makeSlides(x){
       "TITRE DE L'ARTICLE : " + x.title + "\n" +
       (x.fr ? "TRADUCTION DE CE TITRE : " + x.fr + "\n" : "") +
       "NATURE DE LA SOURCE : " + niveau(x).nom + ". " + niveau(x).dit + "\n" +
+      (x.decalage ? "ATTENTION : la page de l'article indique une publication " + x.decalage +
+        " jours avant sa diffusion dans le flux. Ne presente pas l'information comme " +
+        "une annonce du jour, et signale ce doute dans a_verifier.\n" : "") +
       (x.fiab === "reprise" ? "Cette source reprend un travail realise ailleurs. " +
         "Si le texte mentionne l'etude, la revue ou l'equipe d'origine, cite les. " +
         "Signale dans a_verifier qu'il faut remonter a la publication originale.\n" : "") +
@@ -1000,6 +1033,13 @@ async function makeSlides(x){
       "Deux mises en forme possibles. Le type texte pour un paragraphe de " + longueur().mots + ". " +
       "Le type liste pour ce qui s'enumere naturellement, un deroule horaire, des chiffres " +
       "techniques, des facons de suivre l'evenement : " + longueur().puces + ".\n" +
+      "TYPOGRAPHIE FRANCAISE, a respecter partout, titres compris : " +
+      "une espace avant les signes doubles ? ! : et point-virgule. " +
+      "On ecrit QUI CONSTRUIT MAGPIE ? et non QUI CONSTRUIT MAGPIE?. " +
+      "Les guillemets francais sont des chevrons, avec une espace a l'interieur.\n" +
+      "Un titre de slide ne pose qu'une seule question a la fois. " +
+      "QUI CONSTRUIT MAGPIE ET QUAND PART-IL ? est a couper : garde la question principale, " +
+      "le reste appartient au texte du slide.\n" +
       "Va a l'essentiel. Chaque phrase doit apporter une information nouvelle. " +
       "Coupe tout ce qui est du remplissage, de la transition ou de l'emphase.\n\n" +
       "Le champ surligner contient les mots et groupes de mots importants du slide, " +
@@ -1056,9 +1096,52 @@ async function makeSlides(x){
   }
 }
 
+// Corrige le brouillon a partir des ecarts releves, en restant dans la source.
+async function corriger(x, ecarts, corps){
+  const draft = JSON.parse(JSON.stringify(x.slides));
+  delete draft._note; delete draft._full; delete draft._check; delete draft._corrections;
+
+  const consigne = [
+    "Un relecteur a releve des ecarts entre ce brouillon et le texte source.",
+    "Corrige le brouillon pour les faire disparaitre.",
+    "",
+    "REGLES DE CORRECTION",
+    "Tu ne touches qu'aux passages concernes par les ecarts. Tout le reste est reproduit a l'identique.",
+    "Une erreur se corrige en retablissant ce que dit reellement la source.",
+    "Une nuance se corrige en retablissant la prudence : prevu au lieu de fait, une partie au lieu de la totalite.",
+    "Un point absent se corrige en supprimant l'affirmation, ou en la remplacant par ce que la source permet d'ecrire.",
+    "Tu ne rajoutes aucune information nouvelle et tu ne comptes que sur le texte source.",
+    "Si un slide perd sa substance apres correction, reecris le entierement a partir d'un autre element du texte source, en gardant son titre ou en le changeant si besoin.",
+    "",
+    "Le champ surligner de chaque slide doit rester coherent : chaque expression doit se retrouver mot pour mot dans le texte du slide corrige. Reprends les si le texte a change.",
+    "Le titre de couverture reste une reformulation fidele du titre de l'article.",
+    "",
+    "TEXTE SOURCE",
+    corps,
+    "FIN DU TEXTE SOURCE",
+    "",
+    "ECARTS RELEVES",
+    JSON.stringify(ecarts),
+    "",
+    "BROUILLON A CORRIGER",
+    JSON.stringify(draft),
+    "",
+    "Reponds par le JSON complet du carrousel corrige, exactement la meme structure que le brouillon,",
+    'plus un champ corrections : ["ce qui a ete change, une ligne par correction"].'
+  ].join("\n");
+
+  const out = await ask(
+    STYLE + " Tu reponds uniquement par du JSON, sans texte autour.",
+    consigne,
+    3000
+  );
+  return parseJson(out);
+}
+
 // Relecture de controle : chaque affirmation est confrontee au texte source.
-async function verify(x){
+async function verify(x, passe){
   if(!x.slides || !hasAI()) return;
+  passe = passe || 1;
   let corps = corpus.get(x.key);
   if(!corps){
     const art = await fetchArticle(x);
@@ -1110,20 +1193,44 @@ async function verify(x){
       1800
     );
     const v = parseJson(out);
+    const ecarts = Array.isArray(v.ecarts) ? v.ecarts : [];
+
+    if(ecarts.length && passe === 1){
+      x.step2 = "Correction de " + ecarts.length + " point(s)…";
+      render();
+      const corrige = await corriger(x, ecarts, corps);
+      const anciennes = x.slides._corrections || [];
+      const note = x.slides._note, full = x.slides._full;
+      x.slides = corrige;
+      x.slides._note = note;
+      x.slides._full = full;
+      x.slides._corrections = anciennes.concat(
+        Array.isArray(corrige.corrections) ? corrige.corrections : []);
+      delete x.slides.corrections;
+      cacheSave(x);
+      x.step2 = "Seconde vérification…";
+      render();
+      x.checking = false;
+      return verify(x, 2);
+    }
+
     x.slides._check = {
       verdict: v.verdict,
-      ecarts: Array.isArray(v.ecarts) ? v.ecarts : [],
+      ecarts: ecarts,
       at: Date.now(),
-      partiel: !x.slides._full
+      partiel: !x.slides._full,
+      passes: passe
     };
     cacheSave(x);
     if(made.some(m => m.key === x.key)) saveMade(x);
-    const n = x.slides._check.ecarts.length;
-    toast(n ? "Relecture : " + n + " point(s) a revoir" : "Relecture : rien a signaler");
+    const nc = (x.slides._corrections || []).length;
+    toast(ecarts.length
+      ? (nc ? nc + " correction(s), " : "") + ecarts.length + " point(s) de vigilance"
+      : (nc ? nc + " correction(s) appliquée(s), texte conforme" : "Relecture : rien à signaler"));
   }catch(e){
     toast("Relecture impossible : " + e.message);
   }finally{
-    x.checking = false; render();
+    x.checking = false; x.step2 = null; render();
   }
 }
 
@@ -1131,7 +1238,7 @@ function promptsText(x){
   const all = [];
   if(x.slides.titre){
     if(x.slides.type_visuel === "archive")
-      all.push("COUVERTURE\nArchive recommandee : " + (x.slides.visuel || "image d'illustration du sujet"));
+      all.push("COUVERTURE\nArchive recommandée : " + (x.slides.visuel || "image d'illustration du sujet"));
     else if(x.slides.prompt_ia)
       all.push("COUVERTURE\n" + promptComplet(x.slides));
     else
@@ -1156,8 +1263,8 @@ function slidesText(x){
 
   if(x.slides.titre){
     s += "COUVERTURE\n" + x.slides.titre + "\n" + (x.slides.sous_titre || "") + "\n";
-    if(x.slides.visuel) s += "Image a chercher : " + x.slides.visuel + "\n";
-    if(x.slides.type_visuel === "archive") s += "Archive recommandee, pas d'image generee\n";
+    if(x.slides.visuel) s += "Image à chercher : " + x.slides.visuel + "\n";
+    if(x.slides.type_visuel === "archive") s += "Archive recommandée, pas d'image générée\n";
     else if(x.slides.prompt_ia) s += "Prompt IA : " + promptComplet(x.slides) + "\n";
     s += "\n";
   }
@@ -1171,17 +1278,31 @@ function slidesText(x){
     if(Array.isArray(sl.surligner) && sl.surligner.length){
       s += "À surligner : " + sl.surligner.join(" | ") + "\n";
     }
-    if(sl.visuel) s += "Image a chercher : " + sl.visuel + "\n";
-    if(sl.type_visuel === "archive") s += "Archive recommandee, pas d'image generee\n";
+    if(sl.visuel) s += "Image à chercher : " + sl.visuel + "\n";
+    if(sl.type_visuel === "archive") s += "Archive recommandée, pas d'image générée\n";
     else if(sl.prompt_ia) s += "Prompt IA : " + promptComplet(sl) + "\n";
     s += "\n";
   });
 
   if(x.slides.legende) s += "LÉGENDE\n" + x.slides.legende + "\n\n";
   if(x.slides.hashtags) s += x.slides.hashtags + "\n\n";
+  const corr = x.slides._corrections;
+  if(Array.isArray(corr) && corr.length){
+    s += "CORRECTIONS APPLIQUEES AUTOMATIQUEMENT\n";
+    corr.forEach(c => { s += "- " + c + "\n"; });
+    s += "\n";
+  }
+  const ck2 = x.slides._check;
+  if(ck2 && ck2.ecarts.length){
+    s += "POINTS DE VIGILANCE\n";
+    ck2.ecarts.forEach(e => {
+      s += "- [" + (e.gravite || "") + "] " + (e.ou || "") + " : " + (e.probleme || "") + "\n";
+    });
+    s += "\n";
+  }
   const av = x.slides.a_verifier;
   if(Array.isArray(av) && av.length){
-    s += "À VÉRIFIER AVANT PUBLICATION\n";
+    s += "À CONFIRMER SUR L'ARTICLE\n";
     av.forEach(v => { s += "- " + v + "\n"; });
   }
   return s;
@@ -1235,6 +1356,10 @@ document.getElementById("list").addEventListener("click", e => {
     return;
   }
   if(e.target.closest("a")){ marquerLu(x.key); render(); return; }
+  // on ne replie que depuis l'en-tete de l'article, sinon selectionner du texte
+  // dans le panneau ouvert le ferait disparaitre
+  if(!e.target.closest(".head")) return;
+  if(String(window.getSelection ? window.getSelection() : "").length > 2) return;
   openId = (openId === x.key) ? null : x.key;
   if(openId) marquerLu(x.key);
   render();
@@ -1455,6 +1580,8 @@ document.getElementById("viewMade").addEventListener("click", e => {
     return;
   }
   if(e.target.closest("a")) return;
+  if(!e.target.closest(".mh")) return;
+  if(String(window.getSelection ? window.getSelection() : "").length > 2) return;
   madeOpen = madeOpen === m.key ? null : m.key;
   renderMade();
 });
