@@ -828,6 +828,8 @@ async function makeSlides(x){
     const out = await ask(
       STYLE + " Tu réponds uniquement par du JSON, sans texte autour.",
       "Rédige un carrousel Instagram à partir de cet article.\n\n" +
+      "TITRE DE L'ARTICLE : " + x.title + "\n" +
+      (x.fr ? "TRADUCTION DE CE TITRE : " + x.fr + "\n" : "") +
       "SIGNATURE À CRÉDITER : " + credit + "\n" +
       "LIEN : " + x.link + "\n" +
       (art.ok ? "" : "ATTENTION : tu n'as qu'un court extrait, pas l'article entier. " +
@@ -837,8 +839,22 @@ async function makeSlides(x){
       "FORMAT ATTENDU\n" +
       "Une couverture, puis 3 ou 4 slides de contenu. Quatre si la matiere est riche, trois sinon. " +
       "Ne gonfle jamais pour atteindre quatre.\n\n" +
-      "Couverture : un titre de 1 a 3 mots en capitales, souvent un nom propre ou l'objet central, " +
-      "et un sous-titre de 3 a 6 mots qui cree la tension.\n\n" +
+      "LA COUVERTURE, point le plus delicat.\n" +
+      "Pars du titre de l'article : il a ete ecrit par un journaliste pour un lectorat large, " +
+      "il dit deja l'essentiel. Reformule-le, ne le recopie pas.\n" +
+      "Un titre de 2 a 5 mots en capitales, et un sous-titre de 4 a 9 mots.\n" +
+      "Test obligatoire avant de valider ta couverture : quelqu'un qui ne connait rien au sujet " +
+      "et qui ne lit que ces deux lignes doit pouvoir dire de quoi il s'agit. " +
+      "Si ce n'est pas le cas, recommence.\n" +
+      "N'utilise jamais comme titre une designation de catalogue, un sigle, un acronyme " +
+      "ou un nom de mission que le grand public ne connait pas. G+0.633, NGC 1234, LRO : " +
+      "ces noms ne disent rien a personne et n'ont rien a faire en couverture. " +
+      "Mets a la place la chose concrete qui a ete trouvee, faite ou comprise. " +
+      "Les noms vraiment connus, Hubble, Mars, la Lune, un astronaute celebre, restent bienvenus.\n" +
+      "La curiosite doit naitre du fait lui-meme, pas d'un effet de manche. " +
+      "Interdits : les superlatifs non justifies par la source, les questions rhetoriques " +
+      "sans reponse, les formules du type ce que personne n'avait vu, " +
+      "et toute promesse que le carrousel ne tient pas.\n\n" +
       "REGLE LA PLUS IMPORTANTE SUR LA STRUCTURE. Le slide 2, celui qui suit immediatement " +
       "la couverture, expose le fait lui-meme, sans detour. Qui, quoi, quand, et pourquoi " +
       "on en parle aujourd'hui. Apres l'avoir lu, quelqu'un qui ne connait pas le sujet doit " +
@@ -1495,7 +1511,9 @@ async function archCarousel(payload){
       "que tu avances et qui ne figure pas dans le resume ci-dessus. Sois exhaustif sur ce point : " +
       "c'est un contenu commemoratif, une erreur de date serait immediatement reperee.\n\n" +
       "FORMAT\nUne couverture, puis 3 ou 4 slides de contenu.\n" +
-      "Couverture : titre de 1 a 3 mots en capitales, sous-titre de 3 a 6 mots.\n" +
+      "Couverture : titre de 2 a 5 mots en capitales, sous-titre de 4 a 9 mots. " +
+      "Quelqu'un qui ne connait pas l'evenement doit comprendre de quoi il s'agit " +
+      "en lisant ces deux lignes seules. Pas de sigle ni de designation technique en titre.\n" +
       "Le slide 2 expose le fait : ce qui s'est passe ce jour-la, sans detour ni mise en scene. " +
       "Les suivants approfondissent.\n" +
       "Chaque slide : titre court en capitales, 5 mots maximum. " +
