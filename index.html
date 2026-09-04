@@ -150,6 +150,14 @@ h1 em{font-style:italic;color:var(--glow);font-weight:400}
 .legende .lg p.q2{color:var(--dim)}
 .legende .lg b{display:inline-block;margin:3px 0 0 5px}
 #carnetList{max-height:60vh;overflow-y:auto}
+.sect{font-family:var(--serif);font-size:15px;font-weight:600;margin:26px 0 4px;padding-bottom:6px;border-bottom:1px solid var(--line);letter-spacing:.01em}
+.sect span{font-weight:400;color:var(--faint);font-size:12px;margin-left:8px;font-family:var(--sans)}
+.sect.int{color:#c4a6e0;border-color:#453861;margin-top:38px}
+.sectp{font-size:12.5px;color:var(--faint);margin:6px 0 4px;max-width:62ch}
+.t-fonds{background:#2a2233;color:#c4a6e0}
+.fonds{border:1px solid #453861;background:#191426;border-radius:3px;padding:9px 11px;margin-bottom:11px;font-size:13px}
+.fonds b{color:#c4a6e0;font-weight:500}
+.fonds p{margin:4px 0 0;font-size:12.5px;color:var(--dim);max-width:62ch}
 .vieux{border:1px solid #5c4a1e;background:#1d1810;border-radius:3px;padding:9px 11px;margin-bottom:11px;font-size:13px}
 .vieux b{color:var(--amber);font-weight:500}
 .vieux p{margin:4px 0 0;font-size:12.5px;color:var(--dim);max-width:62ch}
@@ -476,8 +484,21 @@ function parseFeed(xml, feed){
     if(!img){ const m = /<img[^>]+src=["']([^"'>]+)["']/i.exec(body||""); if(m) img = m[1]; }
     if(img.indexOf("//") === 0) img = "https:" + img;
 
+    // reperage des contenus qui ne sont pas des actualites
+    const brut = (strip(txt(n,"title")) + " " + strip(body)).toLowerCase();
+    let fonds = "";
+    if(/^photo\s*:|^image\s*:|image of the (day|week)|picture of the (day|week)|image du jour/i.test(brut))
+      fonds = "image du jour";
+    else if(/\b(explainer|what is|how do(es)? .* work|expliqu|qu'est-ce qu|pourquoi les|c'est quoi)\b/i.test(brut))
+      fonds = "sujet explicatif";
+    else if(/\b(this week in|ce mois-ci|le ciel du mois|night sky this|what to see|a voir dans le ciel)\b/i.test(brut))
+      fonds = "agenda du ciel";
+    else if(/\b(anniversar|years ago|il y a \d+ ans|on this day|retro)\b/i.test(brut))
+      fonds = "retour en arriere";
+
     return {
       key: (link || "").replace(/[?#].*$/,""),
+      fonds,
       title: strip(txt(n,"title")) || "(sans titre)",
       link, t, src: feed.name, author, fiab: feed.fiab || "inconnu",
       social: /bsky\.app/i.test(feed.url),
@@ -490,12 +511,14 @@ function parseFeed(xml, feed){
 
 /* ---------- chargement ---------- */
 const DAY = 24 * 3600e3;
+const FONDS_WINDOW = 7 * DAY;   // les intemporels ne perimment pas en une journee
 
 async function load(){
   if(busy) return;
   busy = true;
   const active = feeds.filter(f => f.on);
   const cutoff = Date.now() - DAY;
+  const cutoffFonds = Date.now() - FONDS_WINDOW;
   const cache = store.get("v24.cache", {});   // key -> {fr, slides}
   const seenKeys = new Set();
   const found = [];
@@ -507,7 +530,8 @@ async function load(){
     try{
       const rows = parseFeed(await getText(f.url, {offset:k}), f);
       rows.forEach(r => {
-        if(!r.t || r.t < cutoff) return;
+        if(!r.t) return;
+        if(r.t < (r.fonds ? cutoffFonds : cutoff)) return;
         if(seenKeys.has(r.key)) return;
         seenKeys.add(r.key);
         const c = cache[r.key];
@@ -519,14 +543,17 @@ async function load(){
       done++;
       found.sort((a,b) => b.t - a.t);
       items = found.slice();
-      setStat("busy", done + " / " + active.length + " sources · " + items.length + " articles");
+      setStat("busy", done + " / " + active.length + " sources · " + items.length + " trouves");
       render();
     }
   });
 
   busy = false;
+  const nAct = items.filter(x => !x.fonds).length;
+  const nInt = items.length - nAct;
   setStat(ko === active.length ? "ko" : "live",
-    items.length + " articles sur 24 h" + (ko ? " · " + ko + " source(s) muette(s)" : ""));
+    nAct + " actu(s) sur 24 h · " + nInt + " intemporel(s) sur 7 j" +
+    (ko ? " · " + ko + " source(s) muette(s)" : ""));
   render();
   if(items.some(x => !x.fr) && hasAI()) translateAll();
   else pickTop(false);
@@ -618,8 +645,8 @@ let top3 = null;      // {picks:[{key, why}], at}
 let top3Busy = false;
 
 async function pickTop(force){
-  if(top3Busy || !hasAI() || items.length < 4) return;
-  const pool = items.slice(0, 45);
+  if(top3Busy || !hasAI() || items.filter(x => !x.fonds).length < 4) return;
+  const pool = items.filter(x => !x.fonds).slice(0, 45);
   const sig = pool.slice(0, 12).map(x => x.key).join("|");
   if(!force){
     const c = store.get("v24.top", null);
@@ -694,10 +721,10 @@ function render(){
   const box = document.getElementById("list");
   if(!items.length){
     box.innerHTML = '<p class="empty">' + (busy ? "Chargement…" :
-      "Rien de neuf dans les 24 dernières heures. Réessaie plus tard ou vérifie les sources dans les réglages.") + '</p>';
+      "Rien pour l'instant. Réessaie plus tard ou vérifie les sources dans les réglages.") + '</p>';
     return;
   }
-  box.innerHTML = items.map(x => {
+  const carte = x => {
     const h = (Date.now() - x.t) / 3600e3;
     const cls = h < 3 ? "h3" : h < 12 ? "h12" : "";
     const open = openId === x.key;
@@ -711,7 +738,8 @@ function render(){
           '<div class="meta"><span class="s">' + esc(x.src) + '</span> · ' + ago(x.t) +
             ' <span class="tag n-' + esc(x.fiab || "inconnu") + '" title="' +
               esc(niveau(x).nom + ". " + niveau(x).dit) + '">' + esc(niveau(x).court) + '</span>' +
-            (x.decalage ? ' <span class="tag t-warn" title="La page de l\'article indique une date bien anterieure a celle du flux">republication ?</span>' : '') +
+            (x.fonds ? ' <span class="tag t-fonds" title="' + esc(x.fonds) + '">intemporel</span>' : '') +
+            (x.decalage ? ' <span class="tag t-warn" title="La page indique une date bien anterieure a celle du flux">republication ?</span>' : '') +
             (fait ? ' <span class="tag t-ok">carrousel</span>' : '') +
             (vu && !fait ? ' <span class="tag t-lu">lu</span>' : '') + '</div>' +
           '<p class="fr' + (x.fr ? "" : " raw") + '">' + esc(x.fr || x.title) + '</p>' +
@@ -720,7 +748,26 @@ function render(){
       '</div>' +
       (open ? detailHtml(x) : '') +
     '</article>';
-  }).join("");
+  };
+
+  const actus = items.filter(x => !x.fonds);
+  const inte  = items.filter(x => x.fonds);
+  let html = "";
+  if(actus.length){
+    html += '<h2 class="sect">Actualites <span>' + actus.length + ' sur 24 h</span></h2>' +
+      actus.map(carte).join("");
+  }else{
+    html += '<h2 class="sect">Actualites <span>rien de neuf</span></h2>' +
+      '<p class="cempty" style="margin-bottom:22px">Aucune annonce dans les dernieres 24 heures. ' +
+      'Les intemporels ci-dessous restent exploitables.</p>';
+  }
+  if(inte.length){
+    html += '<h2 class="sect int">Intemporels <span>' + inte.length + ' sur 7 jours</span></h2>' +
+      '<p class="sectp">Images du jour, sujets explicatifs, agendas du ciel. ' +
+      'Rien de neuf a annoncer : le sujet est le phenomene, pas sa publication.</p>' +
+      inte.map(carte).join("");
+  }
+  box.innerHTML = html;
 }
 
 // applique la couleur sur les expressions retenues par le modèle
@@ -818,6 +865,12 @@ function slidesHtml(x){
 function detailHtml(x){
   let s = '<div class="detail">';
   if(x.img) s += '<img src="' + esc(x.img) + '" alt="" loading="lazy" onerror="this.remove()">';
+  if(x.fonds){
+    s += '<div class="fonds"><b>Ce n\'est pas une actualite</b>' +
+      '<p>Ce contenu ressemble a ' + esc(x.fonds) + ' : la page a ete publiee aujourd\'hui, ' +
+      'mais elle n\'annonce aucun fait nouveau. Traite le comme un sujet de fonds, ' +
+      'pas comme une annonce du jour.</p></div>';
+  }
   if(x.decalage){
     s += '<div class="vieux"><b>Article plus ancien que sa reprise</b>' +
       '<p>Le flux l\'a diffuse ' + ago(x.t) + ', mais la page indique une publication du ' +
@@ -1009,6 +1062,10 @@ async function makeSlides(x){
       "TITRE DE L'ARTICLE : " + x.title + "\n" +
       (x.fr ? "TRADUCTION DE CE TITRE : " + x.fr + "\n" : "") +
       "NATURE DE LA SOURCE : " + niveau(x).nom + ". " + niveau(x).dit + "\n" +
+      (x.fonds ? "ATTENTION : ce contenu est " + x.fonds + ", pas une annonce. " +
+        "N'ecris jamais que quelque chose vient d'etre decouvert, observe ou annonce. " +
+        "Le sujet est le phenomene lui-meme, pas sa publication du jour. " +
+        "La couverture porte donc sur l'objet ou le phenomene, pas sur un evenement.\n" : "") +
       (x.decalage ? "ATTENTION : la page de l'article indique une publication " + x.decalage +
         " jours avant sa diffusion dans le flux. Ne presente pas l'information comme " +
         "une annonce du jour, et signale ce doute dans a_verifier.\n" : "") +
