@@ -153,6 +153,22 @@ h1 em{font-style:italic;color:var(--glow);font-weight:400}
 .vieux{border:1px solid #5c4a1e;background:#1d1810;border-radius:3px;padding:9px 11px;margin-bottom:11px;font-size:13px}
 .vieux b{color:var(--amber);font-weight:500}
 .vieux p{margin:4px 0 0;font-size:12.5px;color:var(--dim);max-width:62ch}
+.audit{border-radius:3px;padding:11px 13px;font-size:13px;margin-bottom:8px;border:1px solid}
+.audit.ok{border-color:#2c5a44;background:#0f1b16}
+.audit.ko{border-color:#5c4a1e;background:#1d1810}
+.audit b{display:block;margin-bottom:4px;font-weight:500}
+.audit.ok b{color:var(--ok)} .audit.ko b{color:var(--amber)}
+.audit .ccl{margin:0 0 8px;color:var(--dim);font-size:12.5px}
+.audit ul{margin:0;padding-left:17px}
+.audit li{margin-bottom:9px;line-height:1.45;color:var(--text)}
+.audit .ex{color:var(--dim);font-size:12.5px}
+.audit .sr{color:var(--faint);font-size:11.5px}
+.v{display:inline-block;font-size:10px;padding:1px 6px;border-radius:2px;text-transform:uppercase;letter-spacing:.03em;vertical-align:1px}
+.v-confirme{background:#16301f;color:var(--ok)}
+.v-non-confirme{background:#1c2431;color:var(--faint)}
+.v-contredit{background:#4a1d16;color:#ff9d85}
+.v-invraisemblable{background:#4a1d16;color:#ff9d85}
+.v-imprecis{background:#3a2c12;color:var(--amber)}
 .corr{border:1px solid #2b4a63;background:#101c26;border-radius:3px;padding:11px 13px;font-size:13px;color:var(--dim);margin-bottom:8px}
 .corr b{color:var(--glow);display:block;margin-bottom:5px;font-weight:500}
 .corr ul{margin:0;padding-left:18px}
@@ -767,6 +783,7 @@ function slidesHtml(x){
     if(x.slides.legende) s += '<div class="cap"><b>Légende</b>\n' + esc(x.slides.legende) +
       (x.slides.hashtags ? "\n\n" + esc(x.slides.hashtags) : "") + '</div>';
     const ck = x.slides._check;
+    s += auditHtml(x);
     const corr = x.slides._corrections;
     if(Array.isArray(corr) && corr.length){
       s += '<div class="corr"><b>' + corr.length + ' correction(s) appliquée(s) automatiquement</b><ul>' +
@@ -821,6 +838,8 @@ function detailHtml(x){
     '<button class="btn key" data-act="slides"' + (x.working ? " disabled" : "") + '>' +
       (x.working ? (x.step || "…") : x.slides ? "Régénérer le carrousel" : "Générer le carrousel") + '</button>' +
     '<button class="btn" data-act="copylink">Copier le lien</button>' +
+    (x.slides ? '<button class="btn" data-act="audit"' + (x.auditing ? " disabled" : "") + '>' +
+      (x.auditing ? "Audit…" : x.slides._audit ? "Refaire l\'audit" : "Vérification approfondie") + '</button>' : '') +
     (x.slides ? '<button class="btn" data-act="verify"' + (x.checking ? " disabled" : "") + '>' +
       (x.checking ? "Relecture…" : "Relire") + '</button>' : '') +
     '<button class="btn' + (inCarnet(x.key) ? " on" : "") + '" data-act="keep">' +
@@ -841,23 +860,55 @@ function detailHtml(x){
 /* ---------- IA, via le serveur ---------- */
 // Aucune clé dans le navigateur : c'est /api/ai qui détient la clé, côté Vercel.
 function hasAI(){ return OWN_API !== null; }
+let lastTruncated = false;
 
-async function ask(system, user, maxTokens){
+async function ask(system, user, maxTokens, opts){
   if(!hasAI()) throw new Error("disponible une fois la page en ligne, pas en ouvrant le fichier depuis le disque");
   const r = await fetch("/api/ai", {
     method: "POST",
     headers: {"content-type":"application/json"},
-    body: JSON.stringify({system, user, max_tokens: maxTokens})
+    body: JSON.stringify(Object.assign({system, user, max_tokens: maxTokens}, opts || {}))
   });
   const data = await r.json().catch(() => ({}));
   if(!r.ok) throw new Error(data.error || ("serveur " + r.status));
+  if(data.stop_reason === "max_tokens") lastTruncated = true;
   return data.text || "";
 }
+// Repare un JSON coupe en cours de route : referme la chaine et les blocs ouverts.
+function repairJson(t){
+  let out = t, inStr = false, esc = false;
+  const stack = [];
+  for(let i = 0; i < out.length; i++){
+    const c = out[i];
+    if(inStr){
+      if(esc) esc = false;
+      else if(c === "\\") esc = true;
+      else if(c === '"') inStr = false;
+      continue;
+    }
+    if(c === '"'){ inStr = true; continue; }
+    if(c === "{" || c === "[") stack.push(c);
+    else if(c === "}" || c === "]") stack.pop();
+  }
+  if(inStr) out += '"';
+  out = out.replace(/[,\s]*$/, "");
+  if(/:\s*$/.test(out)) out += '""';
+  while(stack.length) out += (stack.pop() === "{" ? "}" : "]");
+  return out;
+}
+
 function parseJson(s){
   const clean = s.replace(/```json|```/g, "").trim();
   const a = clean.indexOf("["), b = clean.indexOf("{");
   const start = (a >= 0 && (b < 0 || a < b)) ? a : b;
-  return JSON.parse(start > 0 ? clean.slice(start) : clean);
+  const body = start > 0 ? clean.slice(start) : clean;
+  try{
+    return JSON.parse(body);
+  }catch(e){
+    const rep = JSON.parse(repairJson(body));   // leve a nouveau si irreparable
+    rep._tronque = true;
+    return rep;
+  }
 }
 
 const STYLE = "Tu écris pour Escale sous les étoiles, un compte de vulgarisation astronomique en français. " +
@@ -1071,8 +1122,13 @@ async function makeSlides(x){
       "la phrase : utiliser une photo d'archive, pas d'image generee.\n" +
       "legende : 3 a 5 phrases, terminees obligatoirement par le credit exact " +
       "de la signature ci-dessus, suivi du lien.\n" +
-      "a_verifier : tous les points a confirmer sur l'article avant publication, " +
-      "chiffres, noms et dates en priorite. Sois severe avec toi-meme. Liste vide si rien.\n" +
+      "a_verifier : tous les points a confirmer avant publication, chiffres, noms " +
+      "et dates en priorite. Sois severe avec toi-meme. Liste vide si rien.\n" +
+      "Avant d'ecrire une grandeur, confronte la a un ordre de grandeur connu : " +
+      "une structure posee sur un astre ne peut pas etre plus large que cet astre, " +
+      "un perimetre n'est pas un diametre, un rayon n'est pas un diametre. " +
+      "Si un chiffre de l'article te parait douteux, ne le reprends pas tel quel : " +
+      "ecris ce dont tu es sur et signale le doute dans a_verifier.\n" +
       "hashtags : 8 hashtags francais et anglais.\n\n" +
       "JSON attendu : {\"titre\":\"\",\"sous_titre\":\"\"," +
       "\"visuel\":\"\",\"type_visuel\":\"archive\",\"prompt_ia\":\"\"," +
@@ -1080,9 +1136,12 @@ async function makeSlides(x){
       "\"surligner\":[\"\"],\"visuel\":\"\",\"nb_images\":1," +
       "\"type_visuel\":\"archive\",\"prompt_ia\":\"\"}]," +
       "\"legende\":\"\",\"a_verifier\":[\"\"],\"hashtags\":\"\"}",
-      3000
+      6000
     );
     x.slides = parseJson(out);
+    if(x.slides._tronque || lastTruncated)
+      toast("La reponse a ete coupee, le carrousel peut etre incomplet. Regenere si besoin.");
+    lastTruncated = false;
     x.slides._note = x.source_note;
     x.slides._full = art.ok;
     cacheSave(x); saveMade(x);
@@ -1090,7 +1149,9 @@ async function makeSlides(x){
     x.working = false; x.step = null;
     await verify(x);
   }catch(e){
-    toast("Échec : " + e.message);
+    toast(/JSON/i.test(e.message)
+      ? "Reponse illisible, probablement coupee. Reclique sur Generer le carrousel."
+      : "Échec : " + e.message);
   }finally{
     x.working = false; x.step = null; render();
   }
@@ -1108,6 +1169,9 @@ async function corriger(x, ecarts, corps){
     "REGLES DE CORRECTION",
     "Tu ne touches qu'aux passages concernes par les ecarts. Tout le reste est reproduit a l'identique.",
     "Une erreur se corrige en retablissant ce que dit reellement la source.",
+    "Sauf si l'erreur vient de la source elle-meme : dans ce cas, supprime le chiffre",
+    "plutot que de le recopier, et garde ce qui est certain. Mieux vaut ne pas donner",
+    "de dimension que d'en donner une fausse.",
     "Une nuance se corrige en retablissant la prudence : prevu au lieu de fait, une partie au lieu de la totalite.",
     "Un point absent se corrige en supprimant l'affirmation, ou en la remplacant par ce que la source permet d'ecrire.",
     "Tu ne rajoutes aucune information nouvelle et tu ne comptes que sur le texte source.",
@@ -1133,9 +1197,120 @@ async function corriger(x, ecarts, corps){
   const out = await ask(
     STYLE + " Tu reponds uniquement par du JSON, sans texte autour.",
     consigne,
-    3000
+    6000
   );
   return parseJson(out);
+}
+
+// Verification approfondie : l'auditeur sort de l'article et recoupe sur le web.
+async function audit(x){
+  if(!x.slides || !hasAI()) return;
+  x.auditing = true; x.step3 = "Recherche des sources…"; render();
+
+  const draft = {
+    couverture: (x.slides.titre || "") + " / " + (x.slides.sous_titre || ""),
+    slides: (x.slides.slides || []).map(sl => ({
+      titre: sl.titre,
+      contenu: sl.type === "liste" ? (sl.puces || []).join(" | ") : sl.texte
+    })),
+    legende: x.slides.legende
+  };
+
+  const consigne = [
+    "Tu audites un carrousel de vulgarisation avant sa publication.",
+    "Tu disposes de la recherche web : sers t'en, ne te fie pas a ta memoire.",
+    "",
+    "ARTICLE D'ORIGINE : " + x.link,
+    "SOURCE : " + x.src + (x.author ? ", par " + x.author : ""),
+    "",
+    "METHODE",
+    "1. Liste chaque affirmation factuelle verifiable du carrousel : chiffres, dates,",
+    "noms de personnes, d'engins et d'organisations, lieux, superlatifs, premieres,",
+    "attributions de roles, liens de cause a effet.",
+    "2. Pour chacune, cherche une confirmation independante de l'article : communique",
+    "d'agence spatiale, publication scientifique, site officiel de l'entreprise concernee,",
+    "media specialise. Une reprise de presse ne confirme rien si elle a la meme origine.",
+    "3. Rends un verdict par affirmation, avec la source qui l'appuie.",
+    "",
+    "CONTROLE DES GRANDEURS, a faire systematiquement",
+    "Pour chaque nombre exprimant une taille, une distance, une duree, une vitesse ou",
+    "une masse, verifie l'ordre de grandeur contre une reference etablie que tu cites.",
+    "Une structure posee sur un astre ne peut pas exceder cet astre. Un perimetre n'est",
+    "pas un diametre, un rayon n'est pas un diametre. Si deux chiffres sont donnes et que",
+    "l'un est un multiple exact de l'autre, demande toi si l'un n'est pas la somme des",
+    "autres presentee comme une dimension.",
+    "Un chiffre invraisemblable est signale meme s'il figure tel quel dans l'article,",
+    "et meme s'il est repris par plusieurs medias.",
+    "",
+    "POINT DE VIGILANCE PARTICULIER",
+    "Les superlatifs et les premieres sont la premiere cause d'erreur : premier, plus grand,",
+    "jamais vu, record. Cherche activement un precedent qui les invaliderait.",
+    "",
+    "VERDICTS POSSIBLES",
+    "confirme : une source independante le dit explicitement.",
+    "non confirme : rien trouve pour l'appuyer, sans etre contredit non plus.",
+    "contredit : une source fiable dit autre chose.",
+    "invraisemblable : le chiffre ne tient pas face a un ordre de grandeur connu.",
+    "imprecis : exact sur le fond, mais formule d'une facon qui induit en erreur.",
+    "",
+    "CARROUSEL A AUDITER",
+    JSON.stringify(draft),
+    "",
+    "Reponds uniquement par ce JSON, sans texte autour :",
+    '{"verdicts":[{"affirmation":"","verdict":"confirme","explication":"","source":"","url":""}],',
+    '"conclusion":"une phrase : publiable en l etat, ou a corriger avant publication"}'
+  ].join("\n");
+
+  try{
+    const out = await ask(
+      "Tu es verificateur de faits pour un media scientifique. Tu es methodique, " +
+      "sceptique et sans complaisance. Tu ne valides que ce que tu as pu recouper. " +
+      "Tu reponds uniquement par du JSON, sans texte autour.",
+      consigne,
+      8000,
+      {web: true}
+    );
+    const a = parseJson(out);
+    x.slides._audit = {
+      verdicts: Array.isArray(a.verdicts) ? a.verdicts : [],
+      conclusion: a.conclusion || "",
+      at: Date.now()
+    };
+    cacheSave(x);
+    if(made.some(m => m.key === x.key)) saveMade(x);
+    const pb = x.slides._audit.verdicts.filter(v =>
+      ["contredit","invraisemblable","imprecis"].indexOf(v.verdict) >= 0).length;
+    toast(pb ? "Audit : " + pb + " probleme(s) detecte(s)" : "Audit termine, rien de bloquant");
+  }catch(e){
+    toast("Audit impossible : " + e.message);
+  }finally{
+    x.auditing = false; x.step3 = null; render();
+  }
+}
+
+function auditHtml(x){
+  const a = x.slides && x.slides._audit;
+  if(x.auditing) return '<div class="check"><b>' + esc(x.step3 || "Audit en cours…") + '</b>' +
+    '<p class="pt">Recherche sur le web, comptez une a deux minutes.</p></div>';
+  if(!a) return "";
+
+  const ordre = {contredit:0, invraisemblable:1, imprecis:2, "non confirme":3, confirme:4};
+  const vs = a.verdicts.slice().sort((p, q) =>
+    (ordre[p.verdict] === undefined ? 5 : ordre[p.verdict]) -
+    (ordre[q.verdict] === undefined ? 5 : ordre[q.verdict]));
+  const pb = vs.filter(v => ["contredit","invraisemblable","imprecis"].indexOf(v.verdict) >= 0).length;
+
+  let s = '<div class="audit' + (pb ? " ko" : " ok") + '">' +
+    '<b>Verification approfondie : ' + (pb ? pb + " point(s) a traiter" : "rien de bloquant") + '</b>';
+  if(a.conclusion) s += '<p class="ccl">' + esc(a.conclusion) + '</p>';
+  s += '<ul>' + vs.map(v =>
+    '<li><span class="v v-' + esc((v.verdict || "").replace(/\s/g, "-")) + '">' +
+    esc(v.verdict || "?") + '</span> ' + esc(v.affirmation || "") +
+    (v.explication ? '<br><span class="ex">' + esc(v.explication) + '</span>' : '') +
+    (v.source ? '<br><span class="sr">' + esc(v.source) +
+      (v.url ? ' · <a href="' + esc(v.url) + '" target="_blank" rel="noopener">voir</a>' : '') +
+      '</span>' : '') + '</li>').join("") + '</ul></div>';
+  return s;
 }
 
 // Relecture de controle : chaque affirmation est confrontee au texte source.
@@ -1169,7 +1344,27 @@ async function verify(x, passe){
       "Ne signale jamais un choix de style, de ton ou de formulation.",
       "Une reformulation fidele n'est pas un ecart.",
       "",
-      "Gravite : erreur si c'est faux ou contredit par la source,",
+      "DEUXIEME CONTROLE, AUSSI IMPORTANT QUE LE PREMIER : la vraisemblance physique.",
+      "Etre fidele a la source ne suffit pas. Une source peut se tromper, et la presse",
+      "recopie souvent des chiffres faux. Confronte donc chaque grandeur a la realite,",
+      "pas seulement au texte.",
+      "Compare toute taille, distance, duree, vitesse ou masse a un ordre de grandeur connu :",
+      "diametre de la Terre 12 742 km, de la Lune 3 475 km, de Jupiter 139 820 km,",
+      "de Saturne 120 536 km, du Soleil 1 392 700 km, distance Terre Lune 384 400 km,",
+      "unite astronomique 149,6 millions de km, annee-lumiere 9 461 milliards de km.",
+      "Une structure posee sur un astre ne peut pas etre plus large que cet astre.",
+      "Une orbite ne peut pas etre plus petite que le corps orbite.",
+      "Une duree de mission ne peut pas depasser l'age de la mission.",
+      "Mefie-toi particulierement des confusions classiques : un perimetre presente comme",
+      "un diametre, un rayon pris pour un diametre, un total pris pour une unite,",
+      "une somme de cotes presentee comme une largeur. Verifie par le calcul quand deux",
+      "chiffres sont donnes ensemble : si le grand vaut exactement dix fois le petit et",
+      "que la figure a dix cotes, le grand est un perimetre, pas une largeur.",
+      "Si un chiffre est invraisemblable, signale le en gravite erreur meme s'il est",
+      "recopie fidelement depuis la source, et dis dans probleme quel ordre de grandeur",
+      "il contredit.",
+      "",
+      "Gravite : erreur si c'est faux, invraisemblable ou contredit par la source,",
       "absent si l'information n'y figure pas et ne peut etre confirmee,",
       "nuance si le sens est deforme ou durci.",
       "",
@@ -1286,6 +1481,17 @@ function slidesText(x){
 
   if(x.slides.legende) s += "LÉGENDE\n" + x.slides.legende + "\n\n";
   if(x.slides.hashtags) s += x.slides.hashtags + "\n\n";
+  const au = x.slides._audit;
+  if(au && au.verdicts.length){
+    s += "VERIFICATION APPROFONDIE\n";
+    if(au.conclusion) s += au.conclusion + "\n";
+    au.verdicts.forEach(v => {
+      s += "- [" + (v.verdict || "") + "] " + (v.affirmation || "") + "\n";
+      if(v.explication) s += "  " + v.explication + "\n";
+      if(v.source) s += "  source : " + v.source + (v.url ? " " + v.url : "") + "\n";
+    });
+    s += "\n";
+  }
   const corr = x.slides._corrections;
   if(Array.isArray(corr) && corr.length){
     s += "CORRECTIONS APPLIQUEES AUTOMATIQUEMENT\n";
@@ -1343,6 +1549,7 @@ document.getElementById("list").addEventListener("click", e => {
     if(a === "slides") makeSlides(x);
     if(a === "copylink") navigator.clipboard.writeText(x.link).then(() => toast("Lien copié"));
     if(a === "verify") verify(x);
+    if(a === "audit") audit(x);
     if(a === "copyprompts") navigator.clipboard.writeText(promptsText(x)).then(() => toast("Prompts copiés"));
     if(a === "keep") toggleCarnet(x);
     if(a === "copyslides") navigator.clipboard.writeText(slidesText(x)).then(() => toast("Carrousel copié"));
