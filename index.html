@@ -1067,13 +1067,21 @@ async function makeSlides(x){
       "VERIFICATION : relis le titre source, puis ta couverture. " +
       "Si un lecteur ne pouvait pas deviner le titre source a partir de ta couverture, " +
       "tu t'es trop eloigne, recommence plus pres du texte.\n\n" +
-      "REGLE LA PLUS IMPORTANTE SUR LA STRUCTURE. Le slide 2, celui qui suit immediatement " +
-      "la couverture, expose le fait lui-meme, sans detour. Qui, quoi, quand, et pourquoi " +
-      "on en parle aujourd'hui. Apres l'avoir lu, quelqu'un qui ne connait pas le sujet doit " +
-      "pouvoir resumer l'information en une phrase. " +
+      "REGLE LA PLUS IMPORTANTE SUR LA STRUCTURE. Le slide 2 est le socle du carrousel. " +
+      "Il contient exactement la meme information que la legende de publication : " +
+      "ecris d'abord la legende dans ta tete, puis mets la en slide 2. " +
+      "Si le slide 2 en dit moins que la legende, recommence.\n" +
+      "Il fait deux choses dans cet ordre. D'abord ce qui vient de se passer : " +
+      "qui a fait quoi, quand, et pourquoi on en parle aujourd'hui. " +
+      "Ensuite il situe l'objet pour quelqu'un qui n'en a jamais entendu parler : " +
+      "ce que c'est, ou cela se trouve, a quelle distance, a quoi cela ressemble.\n" +
+      "Ne commence pas par definir l'objet comme dans un dictionnaire. " +
+      "Un slide 2 intitule QU'EST-CE QUE N44 ? qui enchaine sur une definition " +
+      "est un mauvais slide 2 : il oublie de dire que Hubble vient d'en publier une image.\n" +
+      "Apres l'avoir lu, quelqu'un qui ne connait rien au sujet doit pouvoir dire " +
+      "ce qui s'est passe ET de quoi on parle.\n" +
       "Tu n'ouvres jamais sur une anecdote, une citation, une mise en scene ou une question " +
-      "rhetorique : ces elements viennent apres, une fois le fait pose, et seulement s'ils " +
-      "apportent quelque chose.\n" +
+      "rhetorique : ces elements viennent apres, une fois le fait pose.\n" +
       "Les slides suivants approfondissent : comment cela fonctionne, ce que cela change, " +
       "le detail concret qui marque.\n" +
       "LE DERNIER SLIDE se choisit selon ce qui sert le mieux le sujet, sans regle fixe. " +
@@ -1089,6 +1097,14 @@ async function makeSlides(x){
       "Deux mises en forme possibles. Le type texte pour un paragraphe de " + longueur().mots + ". " +
       "Le type liste pour ce qui s'enumere naturellement, un deroule horaire, des chiffres " +
       "techniques, des facons de suivre l'evenement : " + longueur().puces + ".\n" +
+      "VOCABULAIRE. Ecris en francais. N'invente jamais un mot : si un terme anglais " +
+      "n'a pas d'equivalent francais evident, garde le tel quel en italique mentalement " +
+      "plutot que de le deformer. On ecrit superbulle, pas superbulls. On ecrit amas, " +
+      "pas cluster. On ecrit annees-lumiere, pas light-years.\n" +
+      "Tout terme technique est explique dans la phrase ou il apparait, en quelques mots, " +
+      "sans renvoyer a plus tard.\n" +
+      "Relis chaque mot inhabituel avant de le rendre : un mot mal orthographie " +
+      "dans un titre de slide ruine la credibilite du carrousel entier.\n" +
       "TYPOGRAPHIE FRANCAISE, a respecter partout, titres compris : " +
       "une espace avant les signes doubles ? ! : et point-virgule. " +
       "On ecrit QUI CONSTRUIT MAGPIE ? et non QUI CONSTRUIT MAGPIE?. " +
@@ -1127,6 +1143,12 @@ async function makeSlides(x){
       "la phrase : utiliser une photo d'archive, pas d'image generee.\n" +
       "legende : 3 a 5 phrases, terminees obligatoirement par le credit exact " +
       "de la signature ci-dessus, suivi du lien.\n" +
+      "ATTENTION AU CREDIT DE L'IMAGE, qui n'est pas le meme que celui de l'article. " +
+      "Si le texte provient d'un site qui relaie un communique, l'image appartient " +
+      "a l'organisme qui l'a produite, pas au relais. Une image du telescope Hubble " +
+      "se credite ESA/Hubble et NASA, une image de l'ESO se credite ESO, " +
+      "et ce libelle ne se modifie pas. Indique le credit image dans a_verifier " +
+      "si tu n'es pas certain de son libelle exact.\n" +
       "a_verifier : tous les points a confirmer avant publication, chiffres, noms " +
       "et dates en priorite. Sois severe avec toi-meme. Liste vide si rien.\n" +
       "Avant d'ecrire une grandeur, confronte la a un ordre de grandeur connu : " +
@@ -1179,10 +1201,16 @@ async function corriger(x, ecarts, corps){
     "de dimension que d'en donner une fausse.",
     "Une nuance se corrige en retablissant la prudence : prevu au lieu de fait, une partie au lieu de la totalite.",
     "Un point absent se corrige en supprimant l'affirmation, ou en la remplacant par ce que la source permet d'ecrire.",
+    "Une faute de langue se corrige en retablissant le mot juste partout ou il apparait,",
+    "titres, hashtags et champ surligner compris.",
+    "Un credit d'image errone se corrige en nommant l'organisme producteur de l'image.",
     "Tu ne rajoutes aucune information nouvelle et tu ne comptes que sur le texte source.",
     "Si un slide perd sa substance apres correction, reecris le entierement a partir d'un autre element du texte source, en gardant son titre ou en le changeant si besoin.",
     "",
     "Le champ surligner de chaque slide doit rester coherent : chaque expression doit se retrouver mot pour mot dans le texte du slide corrige. Reprends les si le texte a change.",
+    "Dans le champ corrections, designe les slides comme l'utilisateur les voit :",
+    "la couverture s'appelle Couverture, le premier slide du tableau s'appelle Slide 2,",
+    "le suivant Slide 3, et ainsi de suite.",
     "Le titre de couverture reste une reformulation fidele du titre de l'article.",
     "",
     "TEXTE SOURCE",
@@ -1368,6 +1396,21 @@ async function verify(x, passe){
       "Si un chiffre est invraisemblable, signale le en gravite erreur meme s'il est",
       "recopie fidelement depuis la source, et dis dans probleme quel ordre de grandeur",
       "il contredit.",
+      "",
+      "TROISIEME CONTROLE : la langue et les credits.",
+      "Signale tout mot inexistant ou deforme, en particulier les termes anglais mal",
+      "francises. Verifie chaque terme technique et chaque nom propre lettre par lettre,",
+      "titres et hashtags compris, ou une faute passe souvent inapercue.",
+      "L'orthographe usuelle soude ces composes : superbulle, superamas, supernova.",
+      "Signale les mots anglais laisses tels quels alors qu'un equivalent francais existe :",
+      "cluster pour amas, light-year pour annee-lumiere, spacecraft pour sonde ou vaisseau.",
+      "Signale les termes techniques employes sans etre expliques.",
+      "Signale l'absence d'espace avant les signes doubles ? ! : et point-virgule.",
+      "Verifie le credit de l'image, qui n'est pas celui de l'article. Si le texte vient",
+      "d'un site qui relaie un communique, l'image appartient a l'organisme producteur :",
+      "une image Hubble se credite ESA/Hubble et NASA, pas le relais qui l'a republiee.",
+      "Ces points prennent la gravite nuance, sauf un mot inexistant dans un titre",
+      "ou un credit errone, qui prennent la gravite erreur.",
       "",
       "Gravite : erreur si c'est faux, invraisemblable ou contredit par la source,",
       "absent si l'information n'y figure pas et ne peut etre confirmee,",
