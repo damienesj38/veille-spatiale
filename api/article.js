@@ -72,6 +72,31 @@ function extract(html) {
   return text;
 }
 
+// Cherche la vraie date de publication de l'article, la ou elle se trouve.
+function datePubliee(html) {
+  const m = meta(html, ["article:published_time", "article:modified_time",
+                        "datePublished", "publishdate", "date", "DC.date.issued"]);
+  if (m && !isNaN(Date.parse(m))) return new Date(Date.parse(m)).toISOString();
+
+  // donnees structurees JSON-LD, presentes sur la plupart des sites de presse
+  const blocs = html.match(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi) || [];
+  for (const b of blocs) {
+    const brut = b.replace(/<[^>]+>/g, "");
+    const d = /"datePublished"\s*:\s*"([^"]+)"/.exec(brut);
+    if (d && !isNaN(Date.parse(d[1]))) return new Date(Date.parse(d[1])).toISOString();
+  }
+
+  // balise time du HTML
+  const t = /<time[^>]+datetime=["']([^"']+)["']/i.exec(html);
+  if (t && !isNaN(Date.parse(t[1]))) return new Date(Date.parse(t[1])).toISOString();
+
+  return "";
+}
+
+// Vercel coupe une fonction au bout de 10 s par defaut. On demande le maximum
+// autorise sur la formule Hobby, sinon les appels longs reviennent vides.
+export const maxDuration = 30;
+
 export default async function handler(req, res) {
   res.setHeader("access-control-allow-origin", "*");
 
@@ -109,7 +134,8 @@ export default async function handler(req, res) {
       title: meta(html, ["og:title", "twitter:title"]),
       author: meta(html, ["author", "article:author", "twitter:creator"]),
       image: meta(html, ["og:image", "twitter:image"]),
-      site: meta(html, ["og:site_name"])
+      site: meta(html, ["og:site_name"]),
+      publie: datePubliee(html)
     });
   } catch (e) {
     const why = e && e.name === "TimeoutError" ? "délai dépassé" : (e && e.message) || "erreur";

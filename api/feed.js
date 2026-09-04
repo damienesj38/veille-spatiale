@@ -1,6 +1,10 @@
 // Relais de flux. Le navigateur ne peut pas appeler directement un site tiers,
 // alors c'est ce petit bout de serveur qui va chercher le flux et le renvoie.
 
+// Vercel coupe une fonction au bout de 10 s par defaut. On demande le maximum
+// autorise sur la formule Hobby, sinon les appels longs reviennent vides.
+export const maxDuration = 30;
+
 export default async function handler(req, res) {
   const target = req.query && req.query.url;
 

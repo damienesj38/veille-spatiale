@@ -3,6 +3,10 @@
 
 const MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-5";
 
+// Vercel coupe une fonction au bout de 10 s par defaut. On demande le maximum
+// autorise sur la formule Hobby, sinon les appels longs reviennent vides.
+export const maxDuration = 60;
+
 export default async function handler(req, res) {
   res.setHeader("access-control-allow-origin", "*");
 
@@ -54,7 +58,8 @@ export default async function handler(req, res) {
         max_tokens: maxTokens,
         system,
         messages: [{ role: "user", content: user }]
-      }, web ? { tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 10 }] } : {}))
+      }, web ? { tools: [{ type: "web_search_20250305", name: "web_search",
+          max_uses: Math.min(parseInt(body.max_uses, 10) || 6, 10) }] } : {}))
     });
 
     const data = await r.json();
