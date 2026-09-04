@@ -32,7 +32,9 @@ export default async function handler(req, res) {
     const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body || {};
     const system = String(body.system || "").slice(0, 4000);
     const user = String(body.user || "").slice(0, 40000);
-    const maxTokens = Math.min(Math.max(parseInt(body.max_tokens, 10) || 1500, 100), 4000);
+    const maxTokens = Math.min(Math.max(parseInt(body.max_tokens, 10) || 1500, 100), 8000);
+    // le mode audit autorise le modele a chercher sur le web pour recouper les faits
+    const web = body.web === true;
 
     if (!user) {
       res.status(400).json({ error: "Requête vide" });
@@ -41,18 +43,18 @@ export default async function handler(req, res) {
 
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      signal: AbortSignal.timeout(60000),
+      signal: AbortSignal.timeout(web ? 180000 : 60000),
       headers: {
         "content-type": "application/json",
         "x-api-key": key,
         "anthropic-version": "2023-06-01"
       },
-      body: JSON.stringify({
+      body: JSON.stringify(Object.assign({
         model: MODEL,
         max_tokens: maxTokens,
         system,
         messages: [{ role: "user", content: user }]
-      })
+      }, web ? { tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 10 }] } : {}))
     });
 
     const data = await r.json();
@@ -66,7 +68,8 @@ export default async function handler(req, res) {
       .map(b => b.text)
       .join("\n");
 
-    res.status(200).json({ text });
+    // stop_reason permet au navigateur de savoir si la reponse a ete coupee
+    res.status(200).json({ text, stop_reason: data.stop_reason || "" });
   } catch (e) {
     const why = e && e.name === "TimeoutError" ? "délai dépassé" : (e && e.message) || "erreur inconnue";
     res.status(502).json({ error: why });
