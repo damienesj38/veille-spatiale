@@ -26,6 +26,7 @@ header{position:sticky;top:0;z-index:10;background:rgba(12,16,23,.95);backdrop-f
 .hd{max-width:780px;margin:0 auto;padding:16px 22px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
 h1{font-family:var(--serif);font-size:21px;font-weight:600;margin:0;letter-spacing:-.01em}
 h1 em{font-style:italic;color:var(--glow);font-weight:400}
+.ver{font-size:11px;color:var(--faint);opacity:.55;margin-left:8px}
 .stat{margin-left:auto;font-size:12.5px;color:var(--faint)}
 .dot{width:6px;height:6px;border-radius:50%;background:var(--faint);display:inline-block;margin-right:6px}
 .dot.live{background:var(--ok)} .dot.busy{background:var(--amber)} .dot.ko{background:var(--ember)}
@@ -116,6 +117,8 @@ h1 em{font-style:italic;color:var(--glow);font-weight:400}
 .mt{font-family:var(--serif);font-size:18px;font-weight:600;line-height:1.3}
 .mm{font-size:12px;color:var(--faint);margin-top:3px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
 .mb{margin-top:12px}
+.search input{background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:6px 10px;outline:none;min-width:210px;color:var(--text)}
+.search input:focus{border-color:var(--glow)}
 .seg{display:flex;border:1px solid var(--line);border-radius:3px;overflow:hidden}
 .seg button{padding:6px 13px;font-size:13px;color:var(--dim);border-right:1px solid var(--line)}
 .seg button:last-child{border-right:none}
@@ -233,8 +236,15 @@ input[type=checkbox]{accent-color:#4c8fb5;width:13px;height:13px}
   <div class="hd">
     <h1>Veille 24 h <em>Escale sous les étoiles</em></h1>
     <div class="stat" id="stat"><span class="dot"></span>démarrage</div>
+    <div class="ver" title="Version du fichier deploye">v15</div>
   </div>
   <div class="hd2">
+    <div class="search"><input id="q" type="search" placeholder="Filtrer : Hera, Didymos, Starship…" autocomplete="off"></div>
+    <div class="seg" id="fenSeg">
+      <button data-f="24">24 h</button>
+      <button data-f="48">48 h</button>
+      <button data-f="168">7 j</button>
+    </div>
     <button class="btn" id="refresh">Actualiser</button>
     <button class="btn key" id="translate">Traduire les titres</button>
     <div class="seg"><button id="navNews" aria-pressed="true">24 h</button><button id="navMade">Carrousels</button><button id="navArch">Archives</button></div>
@@ -280,6 +290,10 @@ input[type=checkbox]{accent-color:#4c8fb5;width:13px;height:13px}
     <label>Nature des sources</label>
     <div class="legende" id="legende"></div>
     <label>Sources actives</label>
+    <div class="addbox" style="margin-bottom:7px">
+      <button class="btn" id="testSrc">Tester toutes les sources</button>
+      <span class="hintline" id="testEtat"></span>
+    </div>
     <div class="srcs" id="srcs"></div>
     <label for="newFeed">Ajouter une source</label>
     <div class="addbox">
@@ -310,13 +324,13 @@ const FEEDS=[
   {id:"sn",   name:"SpaceNews",            url:"https://spacenews.com/feed/", fiab:"redaction", on:true},
   {id:"eusf", name:"European Spaceflight", url:"https://europeanspaceflight.com/feed/", fiab:"redaction", on:true},
   {id:"payl", name:"Payload",              url:"https://payloadspace.com/feed/", fiab:"redaction", on:true},
-  {id:"ars",  name:"Ars Technica Space",   url:"https://feeds.arstechnica.com/arstechnica/space", fiab:"redaction", on:true},
+  {id:"ars",  name:"Ars Technica Space",   url:"https://feeds.arstechnica.com/arstechnica/space", alt:["https://arstechnica.com/space/feed/"], fiab:"redaction", on:true},
   {id:"nasa", name:"NASA breaking news",   url:"https://www.nasa.gov/rss/dyn/breaking_news.rss", fiab:"primaire", on:true},
-  {id:"esan", name:"ESA actualités",       url:"https://www.esa.int/rssfeed/Our_Activities/Space_News", fiab:"primaire", on:true},
+  {id:"esan", name:"ESA actualités",       url:"https://www.esa.int/rssfeed/Our_Activities/Space_News", alt:["https://www.esa.int/rssfeed/topnews", "https://www.esa.int/rssfeed/Our_Activities/Space_Science"], fiab:"primaire", on:true},
   {id:"jpl",  name:"NASA JPL",             url:"https://www.jpl.nasa.gov/feeds/news/", fiab:"primaire", on:true},
-  {id:"eso",  name:"ESO",                  url:"https://www.eso.org/public/rss/news/en/", fiab:"primaire", on:true},
-  {id:"hst",  name:"ESA/Hubble",           url:"https://esahubble.org/rss/news/en/", fiab:"primaire", on:true},
-  {id:"jwst", name:"ESA/Webb",             url:"https://esawebb.org/rss/news/en/", fiab:"primaire", on:true},
+  {id:"eso",  name:"ESO",                  url:"https://www.eso.org/public/rss/news/en/", alt:["https://www.eso.org/public/rss/news/en", "https://www.eso.org/public/feeds/news/"], fiab:"primaire", on:true},
+  {id:"hst",  name:"ESA/Hubble",           url:"https://esahubble.org/rss/news/en/", alt:["https://esahubble.org/rss/news/en", "https://feeds.feedburner.com/esahubble/news"], fiab:"primaire", on:true},
+  {id:"jwst", name:"ESA/Webb",             url:"https://esawebb.org/rss/news/en/", alt:["https://esawebb.org/rss/news/en", "https://feeds.feedburner.com/esawebb/news"], fiab:"primaire", on:true},
   {id:"noir", name:"NOIRLab",              url:"https://noirlab.edu/public/news/feed/", fiab:"primaire", on:true},
   {id:"apod", name:"APOD",                 url:"https://apod.nasa.gov/apod.rss", fiab:"primaire", on:true},
   {id:"aas",  name:"AAS Nova",             url:"https://aasnova.org/feed/", fiab:"redaction", on:true},
@@ -324,7 +338,7 @@ const FEEDS=[
   {id:"ut",   name:"Universe Today",       url:"https://www.universetoday.com/feed/", fiab:"reprise", on:true},
   {id:"snt",  name:"Sky & Telescope",      url:"https://skyandtelescope.org/astronomy-news/feed/", fiab:"redaction", on:true},
   {id:"futura",name:"Futura espace",       url:"https://www.futura-sciences.com/rss/espace/actualites.xml", fiab:"reprise", on:true},
-  {id:"ciel", name:"Ciel & Espace",        url:"https://www.cieletespace.fr/rss", fiab:"reprise", on:false},
+  {id:"ciel", name:"Ciel & Espace",        url:"https://www.cieletespace.fr/rss", fiab:"reprise", on:true},
 
   // comptes Bluesky : souvent les premiers à publier
   {id:"bsBerger", name:"Bluesky · Eric Berger",       url:"https://bsky.app/profile/sciguyspace.bsky.social/rss", fiab:"social", on:true},
@@ -373,6 +387,12 @@ const NIVEAUX = {
 function niveau(x){ return NIVEAUX[x && x.fiab] || NIVEAUX.inconnu; }
 
 const savedOn = store.get("v24.feeds", {});
+// Ciel & Espace avait ete coupee par defaut ; on la remet une seule fois,
+// sinon un ancien reglage enregistre la garderait eteinte indefiniment.
+if(!store.get("v24.migr-ciel", false)){
+  if("ciel" in savedOn){ delete savedOn.ciel; store.set("v24.feeds", savedOn); }
+  store.set("v24.migr-ciel", true);
+}
 const custom = store.get("v24.custom", []);
 const feeds = FEEDS.concat(custom).map(f => ({...f, on: (f.id in savedOn) ? savedOn[f.id] : f.on}));
 
@@ -387,6 +407,7 @@ function feedName(url){
 
 let items = [];
 let openId = null;
+let filtre = "";
 let busy = false;
 
 /* ---------- réseau ---------- */
@@ -408,6 +429,26 @@ async function getText(url, opts){
   if(opts.direct){
     try{ const r = await grab(url, 6000); if(r.ok) return await r.text(); }catch(e){}
   }
+
+  // Relais maison d'abord. S'il repond, meme par une erreur, c'est que la
+  // source elle-meme a un probleme : inutile de perdre 45 s de plus dans les
+  // relais publics, ce qui engorgeait la file et rendait muettes des sources
+  // parfaitement valides.
+  if(OWN_API){
+    try{
+      const r = await grab(OWN_API + encodeURIComponent(url), 20000);
+      if(r.ok){
+        const t = await r.text();
+        if(t && t.length > 80) return t;
+        throw new Error("reponse vide");
+      }
+      throw new Error(await r.text().catch(() => "relais " + r.status));
+    }catch(e){
+      if(e.name !== "AbortError" && !/Failed to fetch|NetworkError|Load failed/i.test(e.message)) throw e;
+      // le relais maison est injoignable : on tente les relais publics
+    }
+  }
+
   const off = (opts.offset || 0) % PROXIES.length;
   const chain = PROXIES.slice(off).concat(PROXIES.slice(0, off));
   if(OWN_API) chain.unshift(u => OWN_API + encodeURIComponent(u));
@@ -511,13 +552,14 @@ function parseFeed(xml, feed){
 
 /* ---------- chargement ---------- */
 const DAY = 24 * 3600e3;
+function fenetreActu(){ return (store.get("v24.fen", 24)) * 3600e3; }
 const FONDS_WINDOW = 7 * DAY;   // les intemporels ne perimment pas en une journee
 
 async function load(){
   if(busy) return;
   busy = true;
   const active = feeds.filter(f => f.on);
-  const cutoff = Date.now() - DAY;
+  const cutoff = Date.now() - fenetreActu();
   const cutoffFonds = Date.now() - FONDS_WINDOW;
   const cache = store.get("v24.cache", {});   // key -> {fr, slides}
   const seenKeys = new Set();
@@ -526,9 +568,25 @@ async function load(){
 
   setStat("busy", "récupération…");
 
-  await pool(active, 5, async (f, k) => {
+  const lire = async (f, k) => {
+    const cands = [f.url].concat(f.alt || []);
+    let dernier = null;
+    for(const u of cands){
+      try{
+        const txt = await getText(u, {offset:k});
+        const rows = parseFeed(txt, f);
+        f.err = null;
+        f.urlOk = u;
+        return rows;
+      }catch(e){ dernier = e.message; }
+    }
+    f.err = dernier || "injoignable";
+    throw new Error(f.err);
+  };
+
+  await pool(active, 6, async (f, k) => {
     try{
-      const rows = parseFeed(await getText(f.url, {offset:k}), f);
+      const rows = await lire(f, k);
       rows.forEach(r => {
         if(!r.t) return;
         if(r.t < (r.fonds ? cutoffFonds : cutoff)) return;
@@ -552,7 +610,7 @@ async function load(){
   const nAct = items.filter(x => !x.fonds).length;
   const nInt = items.length - nAct;
   setStat(ko === active.length ? "ko" : "live",
-    nAct + " actu(s) sur 24 h · " + nInt + " intemporel(s) sur 7 j" +
+    nAct + " actu(s) sur " + store.get("v24.fen", 24) + " h · " + nInt + " intemporel(s) sur 7 j" +
     (ko ? " · " + ko + " source(s) muette(s)" : ""));
   render();
   if(items.some(x => !x.fr) && hasAI()) translateAll();
@@ -750,11 +808,14 @@ function render(){
     '</article>';
   };
 
-  const actus = items.filter(x => !x.fonds);
-  const inte  = items.filter(x => x.fonds);
+  const q = (filtre || "").trim().toLowerCase();
+  const garde = x => !q ||
+    ((x.fr || "") + " " + x.title + " " + x.excerpt + " " + x.src).toLowerCase().indexOf(q) >= 0;
+  const actus = items.filter(x => !x.fonds).filter(garde);
+  const inte  = items.filter(x => x.fonds).filter(garde);
   let html = "";
   if(actus.length){
-    html += '<h2 class="sect">Actualites <span>' + actus.length + ' sur 24 h</span></h2>' +
+    html += '<h2 class="sect">Actualites <span>' + actus.length + ' sur ' + store.get("v24.fen", 24) + ' h</span></h2>' +
       actus.map(carte).join("");
   }else{
     html += '<h2 class="sect">Actualites <span>rien de neuf</span></h2>' +
@@ -1727,6 +1788,15 @@ document.addEventListener("click", e => {
   navigator.clipboard.writeText(code.textContent).then(() => toast("Prompt copié"));
 });
 
+document.getElementById("q").addEventListener("input", e => { filtre = e.target.value; render(); });
+
+document.getElementById("fenSeg").addEventListener("click", e => {
+  const b = e.target.closest("button[data-f]"); if(!b) return;
+  store.set("v24.fen", parseInt(b.dataset.f, 10));
+  document.querySelectorAll("#fenSeg button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  load();
+});
+
 document.getElementById("refresh").addEventListener("click", load);
 document.getElementById("translate").addEventListener("click", translateAll);
 
@@ -1736,6 +1806,8 @@ function drawSrcs(){
     '<div><input type="checkbox" id="s_' + f.id + '" data-f="' + f.id + '"' + (f.on ? " checked" : "") + '>' +
     '<label for="s_' + f.id + '" title="' + esc(f.url) + '">' + esc(f.name) + '</label>' +
     '<span class="tag n-' + esc(f.fiab || "inconnu") + '">' + esc(niveau(f).court) + '</span>' +
+    (f.err ? '<span class="tag t-warn" title="' + esc(f.err) + '">muette</span>' : '') +
+    (f.urlOk && f.urlOk !== f.url ? '<span class="tag t-ok" title="' + esc(f.urlOk) + '">adresse de secours</span>' : '') +
     (f.mine ? '<button class="kill" data-kill="' + f.id + '" title="Retirer cette source">×</button>' : '') +
     '</div>').join("");
 }
@@ -1758,6 +1830,32 @@ document.getElementById("lenSeg").addEventListener("click", e => {
   document.querySelectorAll("#lenSeg button").forEach(x =>
     x.setAttribute("aria-pressed", x === b));
   toast("Longueur : " + LONGUEURS[b.dataset.len].label + ". Regenere un carrousel pour l'appliquer.");
+});
+
+document.getElementById("testSrc").addEventListener("click", async () => {
+  const etat = document.getElementById("testEtat");
+  const btn = document.getElementById("testSrc");
+  btn.disabled = true;
+  let fait = 0, ko = 0;
+  await pool(feeds, 4, async (f, k) => {
+    const cands = [f.url].concat(f.alt || []);
+    f.err = null; f.urlOk = null;
+    for(const u of cands){
+      try{
+        const t = await getText(u, {offset:k});
+        parseFeed(t, f);
+        f.urlOk = u;
+        break;
+      }catch(e){ f.err = e.message; }
+    }
+    if(f.urlOk) f.err = null; else ko++;
+    fait++;
+    etat.textContent = fait + " / " + feeds.length + " testees, " + ko + " en echec";
+    drawSrcs();
+  });
+  btn.disabled = false;
+  etat.textContent = "Test termine : " + ko + " source(s) en echec sur " + feeds.length +
+    ". Survole la pastille muette pour voir la raison.";
 });
 
 document.getElementById("addFeed").addEventListener("click", () => {
@@ -2235,6 +2333,11 @@ document.getElementById("navArch").addEventListener("click", () => setView("arch
 /* ---------- démarrage ---------- */
 drawCarnetBtn();
 drawMadeBtn();
+(function(){
+  const f = store.get("v24.fen", 24);
+  document.querySelectorAll("#fenSeg button").forEach(b =>
+    b.setAttribute("aria-pressed", +b.dataset.f === f));
+})();
 load();
 solar();
 setInterval(() => { load(); solar(); }, 15 * 60 * 1000);
