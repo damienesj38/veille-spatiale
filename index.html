@@ -236,7 +236,7 @@ input[type=checkbox]{accent-color:#4c8fb5;width:13px;height:13px}
   <div class="hd">
     <h1>Veille 24 h <em>Escale sous les étoiles</em></h1>
     <div class="stat" id="stat"><span class="dot"></span>démarrage</div>
-    <div class="ver" title="Version du fichier deploye">v15</div>
+    <div class="ver" title="Version du fichier deploye">v16</div>
   </div>
   <div class="hd2">
     <div class="search"><input id="q" type="search" placeholder="Filtrer : Hera, Didymos, Starship…" autocomplete="off"></div>
@@ -2341,6 +2341,121 @@ drawMadeBtn();
 load();
 solar();
 setInterval(() => { load(); solar(); }, 15 * 60 * 1000);
+
+/* ---------- v16 : un carrousel depuis n'importe quel lien ---------- */
+
+const collees = [];
+
+function hoteDe(u){
+  try { return new URL(u).hostname.replace(/^www\./, ""); } catch(e){ return ""; }
+}
+
+function sourceDuLien(u){
+  const h = hoteDe(u);
+  if(!h) return null;
+  const rac = x => x.split(".").slice(-2).join(".");
+  const m = FEEDS.filter(f => { const fh = hoteDe(f.url); return fh && rac(fh) === rac(h); });
+  if(!m.length) return null;
+  const fiabs = [...new Set(m.map(f => f.fiab))];
+  return {
+    name: m.length === 1 ? m[0].name : null,
+    fiab: fiabs.length === 1 ? fiabs[0] : "inconnu"
+  };
+}
+
+function remettreCollees(){
+  if(!collees.length) return;
+  const absentes = collees.filter(c => !items.find(x => x.link === c.link));
+  if(absentes.length) items = absentes.concat(items);
+}
+
+const loadAvantCollage = load;
+load = async function(){
+  const r = await loadAvantCollage.apply(this, arguments);
+  remettreCollees();
+  render();
+  return r;
+};
+
+async function depuisLien(u){
+  u = (u || "").trim();
+  if(!u) return;
+  if(!/^https?:\/\//i.test(u)) u = "https://" + u.replace(/^\/+/, "");
+  if(!hoteDe(u)){ toast("Cette adresse n'est pas valide."); return; }
+
+  const deja = items.find(x => x.link === u);
+  if(deja){
+    openId = deja.key;
+    render();
+    if(!deja.slides) makeSlides(deja);
+    else toast("Le carrousel de cet article est deja fait.");
+    return;
+  }
+
+  toast("Je recupere l'article...");
+  let a = null;
+  try { a = await fetchArticle({ link: u, social: false }); } catch(e){ a = null; }
+  if(!a || !a.ok){
+    toast("Je n'ai pas pu lire cette page" + (a && a.why ? " (" + a.why + ")" : "") + ".");
+    return;
+  }
+
+  const f = sourceDuLien(u);
+  const it = {
+    key: u,
+    link: u,
+    title: (a.title || "").trim() || u,
+    fr: "",
+    src: (f && f.name) || a.site || hoteDe(u),
+    fiab: f ? f.fiab : "inconnu",
+    social: false,
+    fonds: "",
+    t: Date.parse(a.publie || "") || Date.now(),
+    author: a.author || "",
+    excerpt: (a.text || "").slice(0, 600),
+    img: a.image || "",
+    source_note: "",
+    colle: true
+  };
+
+  collees.unshift(it);
+  items = [it].concat(items);
+  openId = it.key;
+  render();
+  makeSlides(it);
+}
+
+(function champLien(){
+  const vue = document.getElementById("viewNews");
+  const avant = document.getElementById("top");
+  if(!vue || !avant) return;
+
+  const zone = document.createElement("section");
+  zone.style.margin = "0 0 18px";
+  zone.innerHTML =
+    '<h2>Un carrousel depuis un lien</h2>' +
+    '<p class="sectp">Colle l\'adresse d\'un article, meme ancien ou absent de ta liste.</p>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">' +
+      '<input id="colleUrl" type="url" placeholder="https://..." style="flex:1;min-width:220px" />' +
+      '<button id="colleGo" class="btn key">Generer</button>' +
+    '</div>';
+
+  vue.insertBefore(zone, avant);
+
+  const champ = zone.querySelector("#colleUrl");
+  const lancer = () => { const v = champ.value; champ.value = ""; depuisLien(v); };
+  zone.querySelector("#colleGo").addEventListener("click", lancer);
+  champ.addEventListener("keydown", e => { if(e.key === "Enter"){ e.preventDefault(); lancer(); } });
+
+  const p = new URLSearchParams(location.search).get("url");
+  if(p){
+    champ.value = p;
+    let n = 0;
+    const attente = setInterval(() => {
+      if(items.length > 0 || ++n > 60){ clearInterval(attente); champ.value = ""; depuisLien(p); }
+    }, 250);
+  }
+})();
 </script>
 </body>
 </html>
