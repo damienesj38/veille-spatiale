@@ -2369,12 +2369,10 @@ function remettreCollees(){
   if(absentes.length) items = absentes.concat(items);
 }
 
-const loadAvantCollage = load;
-load = async function(){
-  const r = await loadAvantCollage.apply(this, arguments);
+const renderAvantCollage = render;
+render = function(){
   remettreCollees();
-  render();
-  return r;
+  return renderAvantCollage.apply(this, arguments);
 };
 
 async function depuisLien(u){
