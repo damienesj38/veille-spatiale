@@ -236,7 +236,7 @@ input[type=checkbox]{accent-color:#4c8fb5;width:13px;height:13px}
   <div class="hd">
     <h1>Veille 24 h <em>Escale sous les étoiles</em></h1>
     <div class="stat" id="stat"><span class="dot"></span>démarrage</div>
-    <div class="ver" title="Version du fichier deploye">v17</div>
+    <div class="ver" title="Version du fichier deploye">v18</div>
   </div>
   <div class="hd2">
     <div class="search"><input id="q" type="search" placeholder="Filtrer : Hera, Didymos, Starship…" autocomplete="off"></div>
@@ -324,13 +324,13 @@ const FEEDS=[
   {id:"sn",   name:"SpaceNews",            url:"https://spacenews.com/feed/", fiab:"redaction", on:true},
   {id:"eusf", name:"European Spaceflight", url:"https://europeanspaceflight.com/feed/", fiab:"redaction", on:true},
   {id:"payl", name:"Payload",              url:"https://payloadspace.com/feed/", fiab:"redaction", on:true},
-  {id:"ars",  name:"Ars Technica Space",   url:"https://feeds.arstechnica.com/arstechnica/space", alt:["https://arstechnica.com/space/feed/"], fiab:"redaction", on:true},
+  {id:"ars",  name:"Ars Technica Space",   url:"https://arstechnica.com/space/feed/", alt:["https://feeds.arstechnica.com/arstechnica/space"], fiab:"redaction", on:true},
   {id:"nasa", name:"NASA breaking news",   url:"https://www.nasa.gov/rss/dyn/breaking_news.rss", fiab:"primaire", on:true},
-  {id:"esan", name:"ESA actualités",       url:"https://www.esa.int/rssfeed/Our_Activities/Space_News", alt:["https://www.esa.int/rssfeed/topnews", "https://www.esa.int/rssfeed/Our_Activities/Space_Science"], fiab:"primaire", on:true},
+  {id:"esan", name:"ESA actualités",       url:"https://www.esa.int/rssfeed/TopNews", alt:["https://www.esa.int/rssfeed/topnews"], fiab:"primaire", on:true},
   {id:"jpl",  name:"NASA JPL",             url:"https://www.jpl.nasa.gov/feeds/news/", fiab:"primaire", on:true},
-  {id:"eso",  name:"ESO",                  url:"https://www.eso.org/public/rss/news/en/", alt:["https://www.eso.org/public/rss/news/en", "https://www.eso.org/public/feeds/news/"], fiab:"primaire", on:true},
-  {id:"hst",  name:"ESA/Hubble",           url:"https://esahubble.org/rss/news/en/", alt:["https://esahubble.org/rss/news/en", "https://feeds.feedburner.com/esahubble/news"], fiab:"primaire", on:true},
-  {id:"jwst", name:"ESA/Webb",             url:"https://esawebb.org/rss/news/en/", alt:["https://esawebb.org/rss/news/en", "https://feeds.feedburner.com/esawebb/news"], fiab:"primaire", on:true},
+  {id:"eso",  name:"ESO",                  url:"https://feeds.feedburner.com/EsoTopNews", alt:["https://www.eso.org/public/rss/news/en/"], fiab:"primaire", on:true},
+  {id:"hst",  name:"ESA/Hubble",           url:"https://feeds.feedburner.com/esahubble/news", alt:["https://esahubble.org/rss/news/en/"], fiab:"primaire", on:true},
+  {id:"jwst", name:"ESA/Webb",             url:"https://feeds.feedburner.com/esawebb/news/", alt:["https://esawebb.org/rss/news/en/"], fiab:"primaire", on:true},
   {id:"noir", name:"NOIRLab",              url:"https://noirlab.edu/public/news/feed/", fiab:"primaire", on:true},
   {id:"apod", name:"APOD",                 url:"https://apod.nasa.gov/apod.rss", fiab:"primaire", on:true},
   {id:"aas",  name:"AAS Nova",             url:"https://aasnova.org/feed/", fiab:"redaction", on:true},
